@@ -1,0 +1,15 @@
+version: "3.5"
+
+secrets:
+  API_TOKEN:
+    file: ./docker/secrets/API_TOKEN
+
+services:
+  bot:
+    build:
+      args:
+        poetry_version: ${POETRY_VERSION}
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    secrets:
+      - API_TOKEN
