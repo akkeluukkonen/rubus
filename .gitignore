@@ -1,4 +1,5 @@
 __pycache__
+.envrc
 .idea/
 .python-version
 .vscode/
