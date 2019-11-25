@@ -4,6 +4,7 @@ Main functionality of rubus for the time being.
 Functionality will most likely be split in the future.
 """
 import logging
+import os
 import time
 
 import telegram
@@ -13,13 +14,20 @@ from telegram.error import NetworkError, Unauthorized
 update_id = None
 
 
+def _get_api_token():
+    try:
+        with open("/run/secrets/API_TOKEN") as infile:
+            api_token = infile.read().rstrip()
+    except FileNotFoundError:
+        api_token = os.environ['API_TOKEN']
+    return api_token
+
+
 def main():
     """Run the bot."""
     global update_id
 
-    with open("/run/secrets/API_TOKEN") as infile:
-        api_token = infile.read().rstrip()
-
+    api_token = _get_api_token()
     bot = telegram.Bot(api_token)
 
     # get the first pending update_id, this is so we can skip over it in case
