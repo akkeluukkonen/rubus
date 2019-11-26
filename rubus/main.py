@@ -54,6 +54,9 @@ def main():
         except Unauthorized:
             # The user has removed or blocked the bot.
             update_id += 1
+        except KeyboardInterrupt:
+            logger.info("User requested shutdown from terminal")
+            break
 
 
 def echo(bot):
