@@ -11,6 +11,13 @@ import telegram
 from telegram.error import NetworkError, Unauthorized
 
 
+formatter_stream = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+handler_stream = logging.StreamHandler()
+handler_stream.setFormatter(formatter_stream)
+logger = logging.getLogger('rubus')
+logger.setLevel(logging.DEBUG)
+logger.addHandler(handler_stream)
+
 update_id = None
 
 
@@ -25,7 +32,7 @@ def _get_api_token():
 
 def main():
     """Run the bot."""
-    global update_id
+    logger.info("Initializing rubus...")
 
     api_token = _get_api_token()
     bot = telegram.Bot(api_token)
@@ -37,8 +44,8 @@ def main():
     except IndexError:
         update_id = None
 
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+    logger.info("Init done. Starting...")
     while True:
         try:
             echo(bot)
