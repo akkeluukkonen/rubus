@@ -5,10 +5,8 @@ Functionality will most likely be split in the future.
 """
 import logging
 import os
-import time
 
-import telegram
-from telegram.error import NetworkError, Unauthorized
+import telegram.ext
 
 
 formatter_stream = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -35,41 +33,24 @@ def main():
     logger.info("Initializing rubus...")
 
     api_token = _get_api_token()
-    bot = telegram.Bot(api_token)
-
-    # get the first pending update_id, this is so we can skip over it in case
-    # we get an "Unauthorized" exception.
-    try:
-        update_id = bot.get_updates()[0].update_id
-    except IndexError:
-        update_id = None
-
+    updater = telegram.ext.Updater(api_token, use_context=True)
+    updater.dispatcher.add_handler(
+        telegram.ext.MessageHandler(
+            telegram.ext.Filters.text,
+            echo
+        ))
 
     logger.info("Init done. Starting...")
-    while True:
-        try:
-            echo(bot)
-        except NetworkError:
-            time.sleep(1)
-        except Unauthorized:
-            # The user has removed or blocked the bot.
-            update_id += 1
-        except KeyboardInterrupt:
-            logger.info("User requested shutdown from terminal")
-            break
+    updater.start_polling(poll_interval=0.1)
+
+    logger.info("Rubus active!")
+    updater.idle()
+    logger.info("Rubus halted. Exiting...")
 
 
-def echo(bot):
+def echo(update, context):  # pylint: disable=unused-argument
     """Echo the message the user sent."""
-    global update_id
-    # Request updates after the last update_id
-    for update in bot.get_updates(offset=update_id, timeout=10):
-        update_id = update.update_id + 1
-
-        if update.message:  # your bot can receive updates without messages
-            # Reply to the message
-            update.message.reply_text(update.message.text)
-
+    update.message.reply_text(update.message.text)
 
 if __name__ == '__main__':
     main()
