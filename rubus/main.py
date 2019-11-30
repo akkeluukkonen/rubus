@@ -35,8 +35,8 @@ def main():
 
     api_token = _get_api_token()
     updater = telegram.ext.Updater(api_token, use_context=True)
-    updater.dispatcher.add_handler(telegram.ext.CommandHandler('stickers_manage', stickers.stickers_manage))
-    updater.dispatcher.add_handler(telegram.ext.CallbackQueryHandler(stickers.stickers_manage_response))
+    updater.dispatcher.add_handler(telegram.ext.CommandHandler('stickers_manage', stickers.manage))
+    updater.dispatcher.add_handler(telegram.ext.CallbackQueryHandler(stickers.manage_response))
 
     logger.info("Init done. Starting...")
     updater.start_polling(poll_interval=0.1)
