@@ -17,8 +17,6 @@ logger = logging.getLogger('rubus')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(handler_stream)
 
-update_id = None
-
 
 def _get_api_token():
     try:
