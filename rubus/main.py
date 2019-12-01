@@ -27,12 +27,18 @@ def _get_api_token():
     return api_token
 
 
+def error(update, context):
+    """Log unexpected errors for debugging"""
+    logger.warning(f"Update {update} caused error {context.error!r}: {context.error}")
+
+
 def main():
     """Run the bot."""
     logger.info("Initializing rubus...")
 
     api_token = _get_api_token()
     updater = telegram.ext.Updater(api_token, use_context=True)
+    updater.dispatcher.add_error_handler(error)
     updater.dispatcher.add_handler(telegram.ext.CommandHandler('stickers_manage', stickers.manage))
     updater.dispatcher.add_handler(telegram.ext.CallbackQueryHandler(stickers.manage_response))
 
