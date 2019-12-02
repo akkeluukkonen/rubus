@@ -30,6 +30,14 @@ def start(update, context):  # pylint: disable=unused-argument
     return State.MENU
 
 
+def _sticker_set_name(update, context):
+    user = update.effective_user
+    bot = context.bot
+    bot_user_account = bot.get_me()
+    sticker_set_name = f"{user['username']}_by_{bot_user_account['username']}"
+    return sticker_set_name
+
+
 def create_set(update, context):
     """Create a new sticker set, which is tied to the calling user
 
@@ -37,8 +45,7 @@ def create_set(update, context):
     """
     user = update.effective_user
     bot = context.bot
-    bot_user_account = bot.get_me()
-    sticker_set_name = f"{user['username']}_by_{bot_user_account['username']}"
+    sticker_set_name = _sticker_set_name(update, context)
     query = update.callback_query
 
     try:
