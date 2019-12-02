@@ -70,7 +70,7 @@ def create_set(update, context):
             query.edit_message_text(text=f"Created a new sticker set named: {sticker_set_name}")
         else:
             # Not sure if we ever end up here as the call seems to throw exceptions instead
-            query.edit_message_text(text=f"Server reported failure during sticker set creation!")
+            query.edit_message_text(text=f"Server reported failure when attempting to create sticker set!")
     except BadRequest as exception:
         if exception.message == "Sticker set name is already occupied":
             query.edit_message_text(f"You have already created a sticker set: {sticker_set_name}")
