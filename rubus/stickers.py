@@ -25,7 +25,6 @@ class State(enum.Enum):
     ADD_STICKER_START = enum.auto()
     ADD_STICKER_PHOTO = enum.auto()
     ADD_STICKER_EMOJI = enum.auto()
-    CREATE_SET_START = enum.auto()
     CREATE_SET = enum.auto()
     CANCEL = enum.auto()
 
@@ -118,13 +117,8 @@ def add_sticker_emoji(update, context):
             logger.exception("Failed unexpectedly when creating sticker set!")
             raise
 
-    keyboard = [[
-        InlineKeyboardButton("Yes", callback_data=str(State.CREATE_SET_START)),
-        InlineKeyboardButton("No", callback_data=str(State.CANCEL)),
-        ]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    message.reply_text("No sticker sets were available. Create one now?", reply_markup=reply_markup)
-    return State.CREATE_SET_START
+    message.reply_text("No sticker sets were available. Send me the name you want to use for the sticker set.")
+    return State.CREATE_SET
 
 
 def _add_sticker_to_set(update, context):
@@ -159,19 +153,6 @@ def _add_sticker_to_set(update, context):
         raise
 
     return success
-
-
-def create_set_start(update, context):
-    """Start creating a new sticker set
-
-    The sticker set will require a name as well as the information required for a sticker itself.
-
-    The bot can manipulate this sticker set as it is the "co-creator" in this case.
-    """
-    query = update.callback_query
-    message = query.message
-    message.edit_text("Send me the name you want to use for the sticker set.", quote=False)
-    return State.CREATE_SET
 
 
 def create_set(update, context):
@@ -235,10 +216,6 @@ handler_conversation = ConversationHandler(
             ],
         State.ADD_STICKER_EMOJI: [
             MessageHandler(Filters.text, add_sticker_emoji),
-            ],
-        State.CREATE_SET_START: [
-            CallbackQueryHandler(create_set_start, pattern=f"^{State.CREATE_SET_START}$"),
-            CallbackQueryHandler(cancel, pattern=f"^{State.CANCEL}$"),
             ],
         State.CREATE_SET: [
             MessageHandler(Filters.text, create_set),
