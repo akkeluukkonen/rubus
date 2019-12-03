@@ -31,10 +31,9 @@ class State(enum.Enum):
 
 
 def start(update, context):  # pylint: disable=unused-argument
-    """Present the user all available configuration options"""
+    """Present the user all available sticker configuration options"""
     keyboard = [
         [InlineKeyboardButton("Add sticker to channel set", callback_data=str(State.ADD_STICKER_START))],
-        # [InlineKeyboardButton("Create new sticker set", callback_data=str(State.CREATE_SET))],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("Select configuration option:", reply_markup=reply_markup)
