@@ -22,17 +22,19 @@ STICKER_DIMENSION_SIZE_PIXELS = 512  # Per Telegram sticker requirements
 class State(enum.Enum):
     """States for the ConversationHandler"""
     MENU = enum.auto()
-    CREATE_SET = enum.auto()
-    ADD_STICKER = enum.auto()
+    ADD_STICKER_START = enum.auto()
     ADD_STICKER_PHOTO = enum.auto()
     ADD_STICKER_EMOJI = enum.auto()
+    CREATE_SET_START = enum.auto()
+    CREATE_SET = enum.auto()
+    CANCEL = enum.auto()
 
 
 def start(update, context):  # pylint: disable=unused-argument
     """Present the user all available configuration options"""
     keyboard = [
-        [InlineKeyboardButton("Create new sticker set", callback_data=str(State.CREATE_SET))],
-        [InlineKeyboardButton("Add sticker to existing set", callback_data=str(State.ADD_STICKER))]
+        [InlineKeyboardButton("Add sticker to channel set", callback_data=str(State.ADD_STICKER_START))],
+        # [InlineKeyboardButton("Create new sticker set", callback_data=str(State.CREATE_SET))],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("Select configuration option:", reply_markup=reply_markup)
@@ -47,46 +49,14 @@ def _sticker_set_name(update, context):
     return sticker_set_name
 
 
-def create_set(update, context):
-    """Create a new sticker set, which is tied to the calling user
-
-    The bot can manipulate this sticker set as it is the "co-creator" in this case.
-    """
-    user = update.effective_user
-    bot = context.bot
-    sticker_set_name = _sticker_set_name(update, context)
-    query = update.callback_query
-
-    try:
-        with open(DEFAULT_STICKER_SET_PNG, 'rb') as png_sticker:
-            success = bot.create_new_sticker_set(
-                user['id'],
-                sticker_set_name,
-                sticker_set_name,  # Use the name also as the title for now
-                png_sticker,
-                DEFAULT_STICKER_SET_EMOJI)
-
-        if success:
-            query.edit_message_text(text=f"Created a new sticker set named: {sticker_set_name}")
-        else:
-            # Not sure if we ever end up here as the call seems to throw exceptions instead
-            query.edit_message_text(text=f"Server reported failure when attempting to create sticker set!")
-    except BadRequest as exception:
-        if exception.message == "Sticker set name is already occupied":
-            query.edit_message_text(f"You have already created a sticker set: {sticker_set_name}")
-        else:
-            logger.exception("Failed unexpectedly when creating sticker set!")
-
-    return ConversationHandler.END
-
-
-def add_sticker(update, context):  # pylint: disable=unused-argument
+def add_sticker_start(update, context):  # pylint: disable=unused-argument
     """Start routine of adding a sticker to an existing set
 
     The sticker will require a photo as well as a corresponding emoji,
     which will be gathered in the next steps.
 
-    Note that currently the set is automatically the set created by the user through the bot.
+    If the channel has no dedicated sticker set yet,
+    one will be created during this process.
     """
     query = update.callback_query
     query.message.edit_text(
@@ -132,13 +102,39 @@ def add_sticker_photo(update, context):
 
 def add_sticker_emoji(update, context):
     """Get emoji(s) from the user and push a create a new sticker to the current set"""
+    # TODO: Confirm message is emoji
+    bot = context.bot
+    message = update.message
+    sticker_set_name = _sticker_set_name(update, context)
+    emojis = message.text
+    context.user_data['emojis'] = emojis
+
+    try:
+        bot.get_sticker_set(sticker_set_name)
+        _add_sticker_to_set(update, context)
+        return ConversationHandler.END
+    except BadRequest as exception:
+        # "Stickerset_invalid" is sent when the set doesn't exist
+        if exception.message != "Stickerset_invalid":
+            logger.exception("Failed unexpectedly when creating sticker set!")
+            raise
+
+    keyboard = [[
+        InlineKeyboardButton("Yes", callback_data=str(State.CREATE_SET_START)),
+        InlineKeyboardButton("No", callback_data=str(State.CANCEL)),
+        ]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    message.reply_text("No sticker sets were available. Create one now?", reply_markup=reply_markup)
+    return State.CREATE_SET_START
+
+
+def _add_sticker_to_set(update, context):
     user = update.effective_user
     bot = context.bot
+    message = update.message
     sticker_set_name = _sticker_set_name(update, context)
     filepath_png = context.user_data['photo_filepath']
-    # TODO: Confirm message is emoji
-    message = update.message
-    emojis = message.text
+    emojis = context.user_data['emojis']
 
     try:
         with open(filepath_png, 'rb') as png_sticker:
@@ -149,19 +145,83 @@ def add_sticker_emoji(update, context):
                 emojis)
 
         if success:
-            message.reply_text(text=f"Added a sticker to set {sticker_set_name}!")
+            sticker_set = bot.get_sticker_set(sticker_set_name)
+            message.reply_text(text=f"Added a sticker to set {sticker_set.title}!", quote=False)
+            temporary_directory = context.user_data['photo_temporary_directory']
+            temporary_directory.cleanup()
+            del context.user_data['photo_temporary_directory']
+            del context.user_data['photo_filepath']
+            del context.user_data['emojis']
         else:
             # Not sure if we ever end up here as the call seems to throw exceptions instead
-            message.reply_text(text=f"Server reported failure when attempting to add sticker!")
+            message.reply_text(text=f"Server reported failure when attempting to add sticker!", quote=False)
     except BadRequest:
         logger.exception("Failed unexpectedly when adding a sticker!")
+        raise
+
+    return success
+
+
+def create_set_start(update, context):
+    """Start creating a new sticker set
+
+    The sticker set will require a name as well as the information required for a sticker itself.
+
+    The bot can manipulate this sticker set as it is the "co-creator" in this case.
+    """
+    query = update.callback_query
+    message = query.message
+    message.edit_text("Send me the name you want to use for the sticker set.", quote=False)
+    return State.CREATE_SET
+
+
+def create_set(update, context):
+    user = update.effective_user
+    bot = context.bot
+    message = update.message
+    sticker_set_name = _sticker_set_name(update, context)
+    sticker_set_title = message.text
+    filepath_png = context.user_data['photo_filepath']
+    emojis = context.user_data['emojis']
+
+    try:
+        with open(filepath_png, 'rb') as png_sticker:
+            success = bot.create_new_sticker_set(
+                user['id'],
+                sticker_set_name,
+                sticker_set_title,
+                png_sticker,
+                emojis)
+
+        if success:
+            message.reply_text(text=f"Created a new sticker set with your sticker!", quote=False)
+            # TODO: Reply with the sticker
+        else:
+            # Not sure if we ever end up here as the call seems to throw exceptions instead
+            message.reply_text(text=f"Server reported failure when attempting to create sticker set!")
+    except BadRequest as exception:
+        if exception.message == "Sticker set name is already occupied":
+            message.reply_text(f"You have already created a personal sticker set. Currently you can only have one!")
+        else:
+            logger.exception("Failed unexpectedly when creating sticker set!")
+        success = False
     finally:
-        # Cleanup and remove all related files
         temporary_directory = context.user_data['photo_temporary_directory']
         temporary_directory.cleanup()
         del context.user_data['photo_temporary_directory']
         del context.user_data['photo_filepath']
+        del context.user_data['emojis']
 
+    # TODO: Check if the channel has a dedicated set
+
+    return ConversationHandler.END
+
+
+def cancel(update, context):  # pylint: disable=unused-argument
+    query = update.callback_query
+    message = query.message
+    message.edit_text("Operation canceled.")
+    # TODO: Delete user_data?
     return ConversationHandler.END
 
 
@@ -169,14 +229,20 @@ handler_conversation = ConversationHandler(
     entry_points=[CommandHandler('stickers', start)],
     states={
         State.MENU: [
-            CallbackQueryHandler(create_set, pattern=f"^{State.CREATE_SET}$"),
-            CallbackQueryHandler(add_sticker, pattern=f"^{State.ADD_STICKER}$"),
+            CallbackQueryHandler(add_sticker_start, pattern=f"^{State.ADD_STICKER_START}$"),
             ],
         State.ADD_STICKER_PHOTO: [
             MessageHandler(Filters.photo, add_sticker_photo),
             ],
         State.ADD_STICKER_EMOJI: [
             MessageHandler(Filters.text, add_sticker_emoji),
+            ],
+        State.CREATE_SET_START: [
+            CallbackQueryHandler(create_set_start, pattern=f"^{State.CREATE_SET_START}$"),
+            CallbackQueryHandler(cancel, pattern=f"^{State.CANCEL}$"),
+            ],
+        State.CREATE_SET: [
+            MessageHandler(Filters.text, create_set),
             ],
     },
     fallbacks=[CommandHandler('stickers', start)]
