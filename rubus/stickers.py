@@ -26,7 +26,6 @@ class State(enum.Enum):
     ADD_STICKER_PHOTO = enum.auto()
     ADD_STICKER_EMOJI = enum.auto()
     CREATE_SET = enum.auto()
-    CANCEL = enum.auto()
 
 
 def start(update, context):  # pylint: disable=unused-argument
@@ -194,14 +193,6 @@ def create_set(update, context):
 
     # TODO: Check if the channel has a dedicated set
 
-    return ConversationHandler.END
-
-
-def cancel(update, context):  # pylint: disable=unused-argument
-    query = update.callback_query
-    message = query.message
-    message.edit_text("Operation canceled.")
-    # TODO: Delete user_data?
     return ConversationHandler.END
 
 
