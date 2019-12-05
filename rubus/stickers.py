@@ -58,9 +58,11 @@ def start(update, context):  # pylint: disable=unused-argument
 
 
 def _sticker_set_name(update, context):
+    """Note that the name is different from the title, which is visible to the users"""
     user = update.effective_user
     bot = context.bot
     bot_user_account = bot.get_me()
+    # The name must end in _by_<bot_username> per Telegram rules
     sticker_set_name = f"{user['username']}_by_{bot_user_account['username']}"
     return sticker_set_name
 
@@ -69,10 +71,9 @@ def add_sticker_start(update, context):  # pylint: disable=unused-argument
     """Start routine of adding a sticker to an existing set
 
     The sticker will require a photo as well as a corresponding emoji,
-    which will be gathered in the next steps.
+    which will be gathered from the user in the next steps.
 
-    If the channel has no dedicated sticker set yet,
-    one will be created during this process.
+    If the channel has no dedicated sticker set yet, one will be created during this process.
     """
     query = update.callback_query
     query.message.edit_text(
@@ -82,15 +83,15 @@ def add_sticker_start(update, context):  # pylint: disable=unused-argument
 
 
 def add_sticker_photo(update, context):
-    """Get a photo from the user and use store it to be added as a sticker"""
+    """Get a photo from the user and convert it to the required format"""
     # A photo can have multiple PhotoSize elements tied together
     # but we want to use the largest one for possible resize operations
     photos = update.message.photo
     photo = max(photos, key=lambda x: x.file_size)
 
-    # Cache the file locally as we can't directly send the file id of a photo
-    # as a sticker to the server. Telegram doesn't allow the file type to change
-    # between objects, thus we have to reupload it manually.
+    # Cache the file locally as we can't directly send the file id of a photo as a sticker to the
+    # server. Telegram doesn't allow the file type to change between objects, thus we have to
+    # reupload it manually. This happens when we are actually adding the sticker to the set.
     bot = context.bot
     file = bot.get_file(photo.file_id)
     temporary_directory = tempfile.TemporaryDirectory()
@@ -98,9 +99,11 @@ def add_sticker_photo(update, context):
     file.download(custom_path=filepath_jpg)
 
     # The file is stored as .jpg on Telegram servers
-    # so we need to resize and convert it manually
+    # so we need to resize and convert it manually to .png
     image_jpg = Image.open(filepath_jpg)
-    # It is enough for one dimension to be STICKER_DIMENSION_SIZE_PIXELS
+
+    # At least one dimension must be STICKER_DIMENSION_SIZE_PIXELS
+    # and neither dimension can exceed this value
     longest_dimension = max(image_jpg.size)
     ratio = STICKER_DIMENSION_SIZE_PIXELS / longest_dimension
     width_new = int(image_jpg.size[0] * ratio)
