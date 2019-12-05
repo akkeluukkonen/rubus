@@ -19,19 +19,40 @@ DEFAULT_STICKER_SET_EMOJI = '\U0000267B'  # recycling symbol
 STICKER_DIMENSION_SIZE_PIXELS = 512  # Per Telegram sticker requirements
 
 
-class State(enum.Enum):
-    """States for the ConversationHandler"""
+class AutoName(enum.Enum):
+    """Generate the Enum value based on the name as string
+
+    This helps debugging issues and the values can be directly used by CallbackQueryHandler.
+    """
+    def _generate_next_value_(name, *args):  # pylint: disable=no-self-argument,unused-argument
+        return name
+
+
+class State(AutoName):
+    """States for the ConversationHandler
+
+    In a State the handler is waiting for the next message to arrive.
+    The performed actions may depend on the message content.
+    """
     MENU = enum.auto()
-    ADD_STICKER_START = enum.auto()
     ADD_STICKER_PHOTO = enum.auto()
     ADD_STICKER_EMOJI = enum.auto()
     CREATE_SET = enum.auto()
 
 
+class Command(AutoName):
+    """Commands for the ConversationHandler
+
+    Can be directly used as a value for the CallbackQueryHandler from the InlineKeyboard.
+    """
+    ADD_STICKER_START = enum.auto()
+
+
+
 def start(update, context):  # pylint: disable=unused-argument
     """Present the user all available sticker configuration options"""
     keyboard = [
-        [InlineKeyboardButton("Add sticker to channel set", callback_data=str(State.ADD_STICKER_START))],
+        [InlineKeyboardButton("Add sticker to channel set", callback_data=Command.ADD_STICKER_START)],
         ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("Select configuration option:", reply_markup=reply_markup)
@@ -200,7 +221,7 @@ handler_conversation = ConversationHandler(
     entry_points=[CommandHandler('stickers', start)],
     states={
         State.MENU: [
-            CallbackQueryHandler(add_sticker_start, pattern=f"^{State.ADD_STICKER_START}$"),
+            CallbackQueryHandler(add_sticker_start, pattern=f"^{Command.ADD_STICKER_START}$"),
             ],
         State.ADD_STICKER_PHOTO: [
             MessageHandler(Filters.photo, add_sticker_photo),
