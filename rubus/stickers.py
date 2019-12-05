@@ -76,9 +76,7 @@ def add_sticker_start(update, context):  # pylint: disable=unused-argument
     If the channel has no dedicated sticker set yet, one will be created during this process.
     """
     query = update.callback_query
-    query.message.edit_text(
-        text="Send me the photo for the sticker and "
-        "I'll try to automatically convert it according to the rules.")
+    query.message.edit_text(text="Send me the photo for the sticker")
     return State.ADD_STICKER_PHOTO
 
 
@@ -101,6 +99,7 @@ def add_sticker_photo(update, context):
     # The file is stored as .jpg on Telegram servers
     # so we need to resize and convert it manually to .png
     image_jpg = Image.open(filepath_jpg)
+    filepath_png = os.path.join(temporary_directory.name, "photo.png")
 
     # At least one dimension must be STICKER_DIMENSION_SIZE_PIXELS
     # and neither dimension can exceed this value
@@ -109,13 +108,11 @@ def add_sticker_photo(update, context):
     width_new = int(image_jpg.size[0] * ratio)
     height_new = int(image_jpg.size[1] * ratio)
     image_resized = image_jpg.resize((width_new, height_new))
-    filepath_png = os.path.join(temporary_directory.name, "photo.png")
     image_resized.save(filepath_png)
 
     context.user_data['photo_temporary_directory'] = temporary_directory
-    context.user_data['photo_filepath'] = filepath_png
 
-    update.message.reply_text(text="Send me the emojis (1 to 3) matching the photo.")
+    update.message.reply_text("Send me the emojis (1 to 3) matching the photo")
     return State.ADD_STICKER_EMOJI
 
 
@@ -147,7 +144,8 @@ def _add_sticker_to_set(update, context):
     bot = context.bot
     message = update.message
     sticker_set_name = _sticker_set_name(update, context)
-    filepath_png = context.user_data['photo_filepath']
+    temporary_directory = context.user_data['photo_temporary_directory']
+    filepath_png = os.path.join(temporary_directory.name, "photo.png")
     emojis = context.user_data['emojis']
 
     try:
@@ -161,10 +159,8 @@ def _add_sticker_to_set(update, context):
         if success:
             sticker_set = bot.get_sticker_set(sticker_set_name)
             message.reply_text(text=f"Added a sticker to set {sticker_set.title}!", quote=False)
-            temporary_directory = context.user_data['photo_temporary_directory']
             temporary_directory.cleanup()
             del context.user_data['photo_temporary_directory']
-            del context.user_data['photo_filepath']
             del context.user_data['emojis']
         else:
             # Not sure if we ever end up here as the call seems to throw exceptions instead
@@ -182,7 +178,8 @@ def create_set(update, context):
     message = update.message
     sticker_set_name = _sticker_set_name(update, context)
     sticker_set_title = message.text
-    filepath_png = context.user_data['photo_filepath']
+    temporary_directory = context.user_data['photo_temporary_directory']
+    filepath_png = os.path.join(temporary_directory.name, "photo.png")
     emojis = context.user_data['emojis']
 
     try:
@@ -207,10 +204,8 @@ def create_set(update, context):
             logger.exception("Failed unexpectedly when creating sticker set!")
         success = False
     finally:
-        temporary_directory = context.user_data['photo_temporary_directory']
         temporary_directory.cleanup()
         del context.user_data['photo_temporary_directory']
-        del context.user_data['photo_filepath']
         del context.user_data['emojis']
 
     # TODO: Check if the channel has a dedicated set
