@@ -14,8 +14,6 @@ from telegram.error import BadRequest
 
 logger = logging.getLogger('rubus')
 
-DEFAULT_STICKER_SET_PNG = "rubus/data/sticker_default.png"
-DEFAULT_STICKER_SET_EMOJI = '\U0000267B'  # recycling symbol
 STICKER_DIMENSION_SIZE_PIXELS = 512  # Per Telegram sticker requirements
 
 
