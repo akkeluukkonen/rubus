@@ -143,6 +143,7 @@ def add_sticker_emoji(update, context):
             return State.ADD_STICKER_EMOJI
 
         logger.exception("Failed unexpectedly when adding stickers!")
+        success = False
 
     if success:
         sticker_set = bot.get_sticker_set(sticker_set_name)
@@ -180,6 +181,7 @@ def create_set(update, context):
             return State.ADD_STICKER_EMOJI
 
         logger.exception("Failed unexpectedly when creating sticker set!")
+        success = False
 
     if success:
         sticker_set = bot.get_sticker_set(sticker_set_name)
