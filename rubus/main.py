@@ -37,7 +37,9 @@ def main():
     logger.info("Initializing rubus...")
 
     api_token = _get_api_token()
-    updater = telegram.ext.Updater(api_token, use_context=True)
+
+    persistence = telegram.ext.PicklePersistence("rubus_data.pkl")
+    updater = telegram.ext.Updater(api_token, use_context=True, persistence=persistence)
     updater.dispatcher.add_error_handler(error)
     updater.dispatcher.add_handler(stickers.handler_conversation)
 
