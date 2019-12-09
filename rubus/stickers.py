@@ -153,6 +153,7 @@ def add_sticker_emoji(update, context):
 
 
 def create_set(update, context):
+    """Create a new sticker set, which is tied to the calling user"""
     user = update.effective_user
     bot = context.bot
     message = update.message
@@ -164,32 +165,27 @@ def create_set(update, context):
 
     try:
         with open(filepath_png, 'rb') as png_sticker:
-            success = bot.create_new_sticker_set(
-                user['id'],
-                sticker_set_name,
-                sticker_set_title,
-                png_sticker,
-                emojis)
-
-        if success:
-            message.reply_text(text=f"Created a new sticker set with your sticker!", quote=False)
-            # TODO: Reply with the sticker
-        else:
-            # Not sure if we ever end up here as the call seems to throw exceptions instead
-            message.reply_text(text=f"Server reported failure when attempting to create sticker set!")
+            success = bot.create_new_sticker_set(user['id'], sticker_set_name, sticker_set_title, png_sticker, emojis)
     except BadRequest as exception:
         if exception.message == "Sticker set name is already occupied":
-            message.reply_text(f"You have already created a personal sticker set. Currently you can only have one!")
-        else:
-            logger.exception("Failed unexpectedly when creating sticker set!")
-        success = False
-    finally:
-        temporary_directory.cleanup()
-        del context.user_data['photo_temporary_directory']
-        del context.user_data['emojis']
+            message.reply_text("You have already created a personal sticker set. Currently you can only have one!")
+            return ConversationHandler.END
+
+        if exception.message == "Invalid sticker emojis":
+            message.reply_text("Invalid emojis. Send me new ones.")
+            # This will unnecessarily request the sticker set name again, but it's a marginal case to get here
+            return State.ADD_STICKER_EMOJI
+
+        logger.exception("Failed unexpectedly when creating sticker set!")
+
+    if success:
+        message.reply_text(text=f"Created a new sticker set with your sticker!", quote=False)
+        # TODO: Reply with the sticker
+    else:
+        message.reply_text("Unexpected failure. Please try again and contact the developer.")
 
     # TODO: Check if the channel has a dedicated set
-
+    _cleanup(context)
     return ConversationHandler.END
 
 
