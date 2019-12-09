@@ -27,7 +27,6 @@ class State(enum.IntEnum):
     ADD_STICKER_SET_TITLE = enum.auto()
     ADD_STICKER_PHOTO = enum.auto()
     ADD_STICKER_EMOJI = enum.auto()
-    CREATE_SET = enum.auto()
 
 
 class Command(enum.IntEnum):
@@ -138,14 +137,6 @@ def add_sticker_photo(update, context):
     return State.ADD_STICKER_EMOJI
 
 
-def _cleanup(context):
-    temporary_directory = context.user_data['photo_temporary_directory']
-    temporary_directory.cleanup()
-    del context.user_data['photo_temporary_directory']
-    del context.user_data['emojis']
-    # TODO: sticker_set_title
-
-
 def add_sticker_emoji(update, context):
     """Get 1 to 3 emoji(s) from the user and add a new sticker to the current set"""
     user = update.effective_user
@@ -160,14 +151,20 @@ def add_sticker_emoji(update, context):
 
     try:
         with open(filepath_png, 'rb') as png_sticker:
-            success = bot.add_sticker_to_set(user['id'], sticker_set_name, png_sticker, emojis)
-    except BadRequest as exception:
-        if exception.message == "Stickerset_invalid":
-            message.reply_text(
-                "No sticker sets were available. "
-                "Send me the name you want to use for the sticker set and I'll create one.")
-            return State.CREATE_SET
+            if context.user_data.get('sticker_set_title'):
+                sticker_set_title = context.user_data['sticker_set_title']
+                success = bot.create_new_sticker_set(
+                    user['id'], sticker_set_name, sticker_set_title, png_sticker, emojis)
 
+                if context.chat_data.get('sticker_set') is None:
+                    message.reply_text(
+                        "Set your set as the default set for the channel "
+                        "since the channel did not yet have a dedicated set",
+                        quote=False)
+                    context.chat_data['sticker_set'] = sticker_set_name
+            else:
+                success = bot.add_sticker_to_set(user['id'], sticker_set_name, png_sticker, emojis)
+    except BadRequest as exception:
         if exception.message == "Invalid sticker emojis":
             message.reply_text("Invalid emojis. Send me new ones.")
             return State.ADD_STICKER_EMOJI
@@ -182,52 +179,12 @@ def add_sticker_emoji(update, context):
     else:
         message.reply_text("Unexpected failure. Please try again and contact the developer.", quote=False)
 
-    _cleanup(context)
-    return ConversationHandler.END
-
-
-def create_set(update, context):
-    """Create a new sticker set, which is tied to the calling user"""
-    user = update.effective_user
-    bot = context.bot
-    message = update.message
-    sticker_set_name = _sticker_set_name(update, context)
-    sticker_set_title = message.text
     temporary_directory = context.user_data['photo_temporary_directory']
-    filepath_png = os.path.join(temporary_directory.name, "photo.png")
-    emojis = context.user_data['emojis']
-
-    try:
-        with open(filepath_png, 'rb') as png_sticker:
-            success = bot.create_new_sticker_set(user['id'], sticker_set_name, sticker_set_title, png_sticker, emojis)
-    except BadRequest as exception:
-        if exception.message == "Sticker set name is already occupied":
-            message.reply_text("You have already created a personal sticker set. Currently you can only have one!")
-            return ConversationHandler.END
-
-        if exception.message == "Invalid sticker emojis":
-            message.reply_text("Invalid emojis. Send me new ones.", quote=False)
-            # This will unnecessarily request the sticker set name again, but it's a marginal case to get here
-            return State.ADD_STICKER_EMOJI
-
-        logger.exception("Failed unexpectedly when creating sticker set!")
-        success = False
-
-    if success:
-        sticker_set = bot.get_sticker_set(sticker_set_name)
-        sticker = sticker_set.stickers[-1]  # Latest sticker will be last in the list
-        message.reply_sticker(sticker.file_id, quote=False)
-
-        if context.chat_data.get('sticker_set') is None:
-            message.reply_text(
-                "Set your set as the default set for the channel "
-                "since the channel did not yet have a dedicated set",
-                quote=False)
-            context.chat_data['sticker_set'] = sticker_set_name
-    else:
-        message.reply_text("Unexpected failure. Please try again and contact the developer.", quote=False)
-
-    _cleanup(context)
+    temporary_directory.cleanup()
+    del context.user_data['photo_temporary_directory']
+    del context.user_data['emojis']
+    if context.user_data.get('sticker_set_title'):
+        del context.user_data['sticker_set_title']
     return ConversationHandler.END
 
 
@@ -245,9 +202,6 @@ handler_conversation = ConversationHandler(
             ],
         State.ADD_STICKER_EMOJI: [
             MessageHandler(Filters.text, add_sticker_emoji),
-            ],
-        State.CREATE_SET: [
-            MessageHandler(Filters.text, create_set),
             ],
     },
     fallbacks=[CommandHandler('stickers', start)]
