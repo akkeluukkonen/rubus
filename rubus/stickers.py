@@ -146,7 +146,7 @@ def add_sticker_emoji(update, context):
         sticker = sticker_set.stickers[-1]  # Latest sticker will be last in the list
         message.reply_sticker(sticker.file_id, quote=False)
     else:
-        message.reply_text("Unexpected failure. Please try again and contact the developer.")
+        message.reply_text("Unexpected failure. Please try again and contact the developer.", quote=False)
 
     _cleanup(context)
     return ConversationHandler.END
@@ -172,7 +172,7 @@ def create_set(update, context):
             return ConversationHandler.END
 
         if exception.message == "Invalid sticker emojis":
-            message.reply_text("Invalid emojis. Send me new ones.")
+            message.reply_text("Invalid emojis. Send me new ones.", quote=False)
             # This will unnecessarily request the sticker set name again, but it's a marginal case to get here
             return State.ADD_STICKER_EMOJI
 
@@ -183,7 +183,7 @@ def create_set(update, context):
         sticker = sticker_set.stickers[-1]  # Latest sticker will be last in the list
         message.reply_sticker(sticker.file_id, quote=False)
     else:
-        message.reply_text("Unexpected failure. Please try again and contact the developer.")
+        message.reply_text("Unexpected failure. Please try again and contact the developer.", quote=False)
 
     # TODO: Check if the channel has a dedicated set
     _cleanup(context)
