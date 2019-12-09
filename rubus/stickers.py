@@ -24,6 +24,7 @@ class State(enum.IntEnum):
     The performed actions may depend on the message content.
     """
     MENU = enum.auto()
+    ADD_STICKER_SET_TITLE = enum.auto()
     ADD_STICKER_PHOTO = enum.auto()
     ADD_STICKER_EMOJI = enum.auto()
     CREATE_SET = enum.auto()
@@ -60,6 +61,19 @@ def _sticker_set_name(update, context):
     return sticker_set_name
 
 
+def _sticker_set_exists(update, context, sticker_set_name=None):
+    if sticker_set_name is None:
+        sticker_set_name = _sticker_set_name(update, context)
+
+    try:
+        context.bot.get_sticker_set(sticker_set_name)
+    except BadRequest as exception:
+        if exception.message == "Stickerset_invalid":
+            return False
+
+    return True
+
+
 def add_sticker_start(update, context):  # pylint: disable=unused-argument
     """Start routine of adding a sticker to an existing set
 
@@ -69,7 +83,22 @@ def add_sticker_start(update, context):  # pylint: disable=unused-argument
     If the channel has no dedicated sticker set yet, one will be created during this process.
     """
     query = update.callback_query
-    query.message.edit_text(text="Send me the photo for the sticker")
+
+    if not _sticker_set_exists(update, context):
+        query.message.edit_text(
+            "No sticker sets were available. Send the name you want to use for creating one.")
+        return State.ADD_STICKER_SET_TITLE
+
+    query.message.edit_text("Send me the photo for the sticker")
+    return State.ADD_STICKER_PHOTO
+
+
+def add_sticker_set_title(update, context):
+    """Get a name for the sticker set as seen by the users"""
+    message = update.message
+    context.user_data['sticker_set_title'] = message.text
+
+    message.reply_text("Send me the photo for the sticker to create the set with", quote=False)
     return State.ADD_STICKER_PHOTO
 
 
@@ -114,6 +143,7 @@ def _cleanup(context):
     temporary_directory.cleanup()
     del context.user_data['photo_temporary_directory']
     del context.user_data['emojis']
+    # TODO: sticker_set_title
 
 
 def add_sticker_emoji(update, context):
@@ -206,6 +236,9 @@ handler_conversation = ConversationHandler(
     states={
         State.MENU: [
             CallbackQueryHandler(add_sticker_start, pattern=f"^{Command.ADD_STICKER_START}$"),
+            ],
+        State.ADD_STICKER_SET_TITLE: [
+            MessageHandler(Filters.text, add_sticker_set_title),
             ],
         State.ADD_STICKER_PHOTO: [
             MessageHandler(Filters.photo, add_sticker_photo),
