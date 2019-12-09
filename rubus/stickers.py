@@ -17,16 +17,7 @@ logger = logging.getLogger('rubus')
 STICKER_DIMENSION_SIZE_PIXELS = 512  # Per Telegram sticker requirements
 
 
-class AutoName(enum.Enum):
-    """Generate the Enum value based on the name as string
-
-    This helps debugging issues and the values can be directly used by CallbackQueryHandler.
-    """
-    def _generate_next_value_(name, *args):  # pylint: disable=no-self-argument,unused-argument
-        return name
-
-
-class State(AutoName):
+class State(enum.IntEnum):
     """States for the ConversationHandler
 
     In a State the handler is waiting for the next message to arrive.
@@ -38,13 +29,12 @@ class State(AutoName):
     CREATE_SET = enum.auto()
 
 
-class Command(AutoName):
+class Command(enum.IntEnum):
     """Commands for the ConversationHandler
 
     Can be directly used as a value for the CallbackQueryHandler from the InlineKeyboard.
     """
     ADD_STICKER_START = enum.auto()
-
 
 
 def start(update, context):  # pylint: disable=unused-argument
