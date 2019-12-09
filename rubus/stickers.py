@@ -143,8 +143,8 @@ def add_sticker_emoji(update, context):
 
     if success:
         sticker_set = bot.get_sticker_set(sticker_set_name)
-        message.reply_text(f"Added a sticker to set {sticker_set.title}!", quote=False)
-        # TODO: Reply with the sticker
+        sticker = sticker_set.stickers[-1]  # Latest sticker will be last in the list
+        message.reply_sticker(sticker.file_id, quote=False)
     else:
         message.reply_text("Unexpected failure. Please try again and contact the developer.")
 
@@ -179,8 +179,9 @@ def create_set(update, context):
         logger.exception("Failed unexpectedly when creating sticker set!")
 
     if success:
-        message.reply_text(text=f"Created a new sticker set with your sticker!", quote=False)
-        # TODO: Reply with the sticker
+        sticker_set = bot.get_sticker_set(sticker_set_name)
+        sticker = sticker_set.stickers[-1]  # Latest sticker will be last in the list
+        message.reply_sticker(sticker.file_id, quote=False)
     else:
         message.reply_text("Unexpected failure. Please try again and contact the developer.")
 
