@@ -101,27 +101,17 @@ def add_sticker_set_title(update, context):
     return State.ADD_STICKER_PHOTO
 
 
-def add_sticker_photo(update, context):
-    """Get a photo from the user and convert it to the required format"""
+def _resize_and_convert_to_png(update, context, temporary_directory):
     # A photo can have multiple PhotoSize elements tied together
     # but we want to use the largest one for possible resize operations
     photos = update.message.photo
     photo = max(photos, key=lambda x: x.file_size)
-
-    # Cache the file locally as we can't directly send the file id of a photo as a sticker to the
-    # server. Telegram doesn't allow the file type to change between objects, thus we have to
-    # reupload it manually. This happens when we are actually adding the sticker to the set.
-    bot = context.bot
-    file = bot.get_file(photo.file_id)
-    temporary_directory = tempfile.TemporaryDirectory()
-    filepath_jpg = os.path.join(temporary_directory.name, "photo.jpg")
-    file.download(custom_path=filepath_jpg)
-
+    file = context.bot.get_file(photo.file_id)
     # The file is stored as .jpg on Telegram servers
     # so we need to resize and convert it manually to .png
+    filepath_jpg = os.path.join(temporary_directory, "photo.jpg")
+    file.download(custom_path=filepath_jpg)
     image_jpg = Image.open(filepath_jpg)
-    filepath_png = os.path.join(temporary_directory.name, "photo.png")
-
     # At least one dimension must be STICKER_DIMENSION_SIZE_PIXELS
     # and neither dimension can exceed this value
     longest_dimension = max(image_jpg.size)
@@ -129,10 +119,20 @@ def add_sticker_photo(update, context):
     width_new = int(image_jpg.size[0] * ratio)
     height_new = int(image_jpg.size[1] * ratio)
     image_resized = image_jpg.resize((width_new, height_new))
+
+    filepath_png = os.path.join(temporary_directory, "photo.png")
     image_resized.save(filepath_png)
+    return filepath_png
 
-    context.user_data['photo_temporary_directory'] = temporary_directory
 
+def add_sticker_photo(update, context):
+    """Get a photo from the user and convert it to the required format"""
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        filepath_png = _resize_and_convert_to_png(update, context, temporary_directory)
+        with open(filepath_png, 'rb') as png_sticker:
+            file = context.bot.upload_sticker_file(update.effective_user['id'], png_sticker)
+
+    context.user_data['sticker_file_id'] = file.file_id
     update.message.reply_text("Send me the emojis (1 to 3) matching the photo")
     return State.ADD_STICKER_EMOJI
 
@@ -142,28 +142,17 @@ def add_sticker_emoji(update, context):
     user = update.effective_user
     bot = context.bot
     sticker_set_name = _sticker_set_name(update, context)
-    temporary_directory = context.user_data['photo_temporary_directory']
-    filepath_png = os.path.join(temporary_directory.name, "photo.png")
-
+    sticker_set_title = context.user_data.get('sticker_set_title')
+    sticker_file_id = context.user_data['sticker_file_id']
     message = update.message
-    context.user_data['emojis'] = message.text
-    emojis = context.user_data['emojis']
+    emojis = message.text
 
     try:
-        with open(filepath_png, 'rb') as png_sticker:
-            if context.user_data.get('sticker_set_title'):
-                sticker_set_title = context.user_data['sticker_set_title']
-                success = bot.create_new_sticker_set(
-                    user['id'], sticker_set_name, sticker_set_title, png_sticker, emojis)
-
-                if context.chat_data.get('sticker_set') is None:
-                    message.reply_text(
-                        "Set your set as the default set for the channel "
-                        "since the channel did not yet have a dedicated set",
-                        quote=False)
-                    context.chat_data['sticker_set'] = sticker_set_name
-            else:
-                success = bot.add_sticker_to_set(user['id'], sticker_set_name, png_sticker, emojis)
+        if sticker_set_title:
+            success = bot.create_new_sticker_set(
+                user['id'], sticker_set_name, sticker_set_title, sticker_file_id, emojis)
+        else:
+            success = bot.add_sticker_to_set(user['id'], sticker_set_name, sticker_file_id, emojis)
     except BadRequest as exception:
         if exception.message == "Invalid sticker emojis":
             message.reply_text("Invalid emojis. Send me new ones.")
@@ -175,16 +164,16 @@ def add_sticker_emoji(update, context):
     if success:
         sticker_set = bot.get_sticker_set(sticker_set_name)
         sticker = sticker_set.stickers[-1]  # Latest sticker will be last in the list
+        # Note that sticker.file_id is different from sticker_file_id
+        # Telegram uses a different id for a sticker included in a set for some reason
         message.reply_sticker(sticker.file_id, quote=False)
     else:
         message.reply_text("Unexpected failure. Please try again and contact the developer.", quote=False)
 
-    temporary_directory = context.user_data['photo_temporary_directory']
-    temporary_directory.cleanup()
-    del context.user_data['photo_temporary_directory']
-    del context.user_data['emojis']
+    del context.user_data['sticker_file_id']
     if context.user_data.get('sticker_set_title'):
         del context.user_data['sticker_set_title']
+
     return ConversationHandler.END
 
 
