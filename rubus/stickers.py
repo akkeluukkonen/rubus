@@ -151,6 +151,7 @@ def add_sticker_emoji(update, context):
         if sticker_set_title:
             success = bot.create_new_sticker_set(
                 user['id'], sticker_set_name, sticker_set_title, sticker_file_id, emojis)
+            context.chat_data['sticker_set'] = sticker_set_name
         else:
             success = bot.add_sticker_to_set(user['id'], sticker_set_name, sticker_file_id, emojis)
     except BadRequest as exception:
