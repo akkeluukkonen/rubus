@@ -106,60 +106,50 @@ def add_sticker_photo(update, context):
     return State.ADD_STICKER_EMOJI
 
 
+def _cleanup(context):
+    temporary_directory = context.user_data['photo_temporary_directory']
+    temporary_directory.cleanup()
+    del context.user_data['photo_temporary_directory']
+    del context.user_data['emojis']
+
+
 def add_sticker_emoji(update, context):
-    """Get emoji(s) from the user and push a create a new sticker to the current set"""
-    # TODO: Confirm message is emoji
-    bot = context.bot
-    message = update.message
-    sticker_set_name = _sticker_set_name(update, context)
-    emojis = message.text
-    context.user_data['emojis'] = emojis
-
-    try:
-        bot.get_sticker_set(sticker_set_name)
-        _add_sticker_to_set(update, context)
-        return ConversationHandler.END
-    except BadRequest as exception:
-        # "Stickerset_invalid" is sent when the set doesn't exist
-        if exception.message != "Stickerset_invalid":
-            logger.exception("Failed unexpectedly when creating sticker set!")
-            raise
-
-    message.reply_text("No sticker sets were available. Send me the name you want to use for the sticker set.")
-    return State.CREATE_SET
-
-
-def _add_sticker_to_set(update, context):
+    """Get 1 to 3 emoji(s) from the user and add a new sticker to the current set"""
     user = update.effective_user
     bot = context.bot
-    message = update.message
     sticker_set_name = _sticker_set_name(update, context)
     temporary_directory = context.user_data['photo_temporary_directory']
     filepath_png = os.path.join(temporary_directory.name, "photo.png")
+
+    message = update.message
+    context.user_data['emojis'] = message.text
     emojis = context.user_data['emojis']
 
     try:
         with open(filepath_png, 'rb') as png_sticker:
-            success = bot.add_sticker_to_set(
-                user['id'],
-                sticker_set_name,
-                png_sticker,
-                emojis)
+            success = bot.add_sticker_to_set(user['id'], sticker_set_name, png_sticker, emojis)
+    except BadRequest as exception:
+        if exception.message == "Stickerset_invalid":
+            message.reply_text(
+                "No sticker sets were available. "
+                "Send me the name you want to use for the sticker set and I'll create one.")
+            return State.CREATE_SET
 
-        if success:
-            sticker_set = bot.get_sticker_set(sticker_set_name)
-            message.reply_text(text=f"Added a sticker to set {sticker_set.title}!", quote=False)
-            temporary_directory.cleanup()
-            del context.user_data['photo_temporary_directory']
-            del context.user_data['emojis']
-        else:
-            # Not sure if we ever end up here as the call seems to throw exceptions instead
-            message.reply_text(text=f"Server reported failure when attempting to add sticker!", quote=False)
-    except BadRequest:
-        logger.exception("Failed unexpectedly when adding a sticker!")
-        raise
+        if exception.message == "Invalid sticker emojis":
+            message.reply_text("Invalid emojis. Send me new ones.")
+            return State.ADD_STICKER_EMOJI
 
-    return success
+        logger.exception("Failed unexpectedly when adding stickers!")
+
+    if success:
+        sticker_set = bot.get_sticker_set(sticker_set_name)
+        message.reply_text(f"Added a sticker to set {sticker_set.title}!", quote=False)
+        # TODO: Reply with the sticker
+    else:
+        message.reply_text("Unexpected failure. Please try again and contact the developer.")
+
+    _cleanup(context)
+    return ConversationHandler.END
 
 
 def create_set(update, context):
