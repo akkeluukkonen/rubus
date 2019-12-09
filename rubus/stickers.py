@@ -49,6 +49,9 @@ def start(update, context):  # pylint: disable=unused-argument
 
 def _sticker_set_name(update, context):
     """Note that the name is different from the title, which is visible to the users"""
+    if context.chat_data.get('sticker_set'):
+        return context.chat_data.get('sticker_set')
+
     user = update.effective_user
     bot = context.bot
     bot_user_account = bot.get_me()
@@ -182,10 +185,16 @@ def create_set(update, context):
         sticker_set = bot.get_sticker_set(sticker_set_name)
         sticker = sticker_set.stickers[-1]  # Latest sticker will be last in the list
         message.reply_sticker(sticker.file_id, quote=False)
+
+        if context.chat_data.get('sticker_set') is None:
+            message.reply_text(
+                "Set your set as the default set for the channel "
+                "since the channel did not yet have a dedicated set",
+                quote=False)
+            context.chat_data['sticker_set'] = sticker_set_name
     else:
         message.reply_text("Unexpected failure. Please try again and contact the developer.", quote=False)
 
-    # TODO: Check if the channel has a dedicated set
     _cleanup(context)
     return ConversationHandler.END
 
