@@ -12,6 +12,9 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, ConversationHandl
 from telegram.ext import Filters
 from telegram.error import BadRequest
 
+from rubus import helper
+
+
 logger = logging.getLogger('rubus')
 
 STICKER_DIMENSION_SIZE_PIXELS = 512  # Per Telegram sticker requirements
@@ -211,5 +214,5 @@ handler_conversation = ConversationHandler(
             MessageHandler(Filters.text, add_sticker_emoji),
             ],
     },
-    fallbacks=[CommandHandler('stickers', start)]
+    fallbacks=[MessageHandler(Filters.all, helper.confused)]
 )
