@@ -159,6 +159,14 @@ def add_sticker_emoji(update, context):
             message.reply_text("Invalid emojis. Send me new ones.")
             return State.ADD_STICKER_EMOJI
 
+        if exception.message == "Peer_id_invalid":
+            message.reply_text(
+                "You need to send me /start privately. "
+                "Otherwise, I'm unable to create or access sticker sets owned by you. "
+                "\n\nSend me the emojis again after you've messaged me.")
+            return State.ADD_STICKER_EMOJI
+
+
         logger.exception("Failed unexpectedly when adding stickers!")
         success = False
 
