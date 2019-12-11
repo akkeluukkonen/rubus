@@ -6,8 +6,11 @@ import logging
 import os
 
 import telegram.ext
+from telegram.ext import ConversationHandler
+from telegram.ext import CommandHandler, MessageHandler, Filters
 
-import stickers
+from rubus import helper
+from rubus import stickers
 
 
 formatter_stream = logging.Formatter(
@@ -25,6 +28,21 @@ logger = logging.getLogger('rubus')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(handler_stream)
 logger.addHandler(handler_file)
+
+
+def start(update, context):  # pylint: disable=unused-argument
+    """Greet the user, basically a nop state"""
+    message = update.message
+
+    if update.effective_chat.type == 'private':
+        message.reply_text(
+            "Hello, thanks for messaging me.\n"
+            "Now you can use all of my features even on other channels!",
+            quote=False)
+    else:
+        message.reply_text("You should message the /start command to me in a private chat.")
+
+    return ConversationHandler.END
 
 
 def _get_api_token():
@@ -50,7 +68,21 @@ def main():
     persistence = telegram.ext.PicklePersistence("rubus_data.pkl")
     updater = telegram.ext.Updater(api_token, use_context=True, persistence=persistence)
     updater.dispatcher.add_error_handler(error)
-    updater.dispatcher.add_handler(stickers.handler_conversation)
+
+    handler_conversation = telegram.ext.ConversationHandler(
+        entry_points=[
+            CommandHandler('start', start),
+            stickers.handler_conversation,
+            ],
+        states={
+            # No higher level states yet implemented
+        },
+        fallbacks=[
+            MessageHandler(Filters.all, helper.confused)
+        ]
+    )
+
+    updater.dispatcher.add_handler(handler_conversation)
 
     logger.info("Init done. Starting...")
     updater.start_polling(poll_interval=0.1)
