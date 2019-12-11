@@ -10,12 +10,21 @@ import telegram.ext
 import stickers
 
 
-formatter_stream = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+formatter_stream = logging.Formatter(
+    "%(asctime)s.%(msecs)03d - %(levelname)s - %(module)s - %(message)s",
+    datefmt="%H:%M:%S")
 handler_stream = logging.StreamHandler()
 handler_stream.setFormatter(formatter_stream)
+
+formatter_file = logging.Formatter(
+    "%(asctime)s.%(msecs)03d - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s")
+handler_file = logging.FileHandler("rubus.log", 'w')
+handler_file.setFormatter(formatter_file)
+
 logger = logging.getLogger('rubus')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(handler_stream)
+logger.addHandler(handler_file)
 
 
 def _get_api_token():
