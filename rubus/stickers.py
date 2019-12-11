@@ -52,11 +52,20 @@ def _sticker_set_name(update, context):
     if context.chat_data.get('sticker_set'):
         return context.chat_data.get('sticker_set')
 
+    # Create a unique sticker set per each user and channel
+    chat = update.effective_chat
     user = update.effective_user
+    # Hash and convert into hex for privacy as it is visible in t.me/stickers
+    prefix_hash = hash(f"{chat.id}{user.id}")
+    # Avoid negative values as Telegram doesn't seem to accept names containing '-'
+    # The name also can't begin with a number so we need to prepend some text
+    prefix = f"Rubus_{abs(prefix_hash):x}"
+
+    # The name must end in _by_<bot_username> per Telegram rules
     bot = context.bot
     bot_user_account = bot.get_me()
-    # The name must end in _by_<bot_username> per Telegram rules
-    sticker_set_name = f"{user['username']}_by_{bot_user_account['username']}"
+    sticker_set_name = f"{prefix}_by_{bot_user_account['username']}"
+    logger.debug(f"Formed sticker set name '{sticker_set_name}'")
     return sticker_set_name
 
 
