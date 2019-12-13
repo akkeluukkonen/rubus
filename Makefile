@@ -2,13 +2,11 @@
 
 NAME := akkeluukkonen/rubus
 COMMIT := $$(git rev-parse HEAD)
-IMAGE := ${NAME}:${COMMIT}
 LATEST := ${NAME}:latest
 RELEASE := ${NAME}:release
 
 build:
-	@docker build -t ${IMAGE} --label git-commit=${COMMIT} -f docker/app/Dockerfile .
-	@docker tag ${IMAGE} ${LATEST}
+	@docker build -t ${LATEST} --label git-commit=${COMMIT} -f docker/app/Dockerfile .
 
 clean:
 	@docker-compose down --volume
@@ -16,11 +14,11 @@ clean:
 run: build
 	@docker-compose up
 
-latest:
-	@echo "Pushing latest image to remote"
-	@docker push ${LATEST}
+push:
+	@echo "Pushing all relevant images to remote"
+	@docker push ${NAME}
 
 release:
-	@echo "Tagging latest build as release and pushing it to remote"
+	@docker tag ${LATEST} ${NAME}:$$(poetry version ${VERSION} | rev | cut -d' ' -f1 | rev)
 	@docker tag ${LATEST} ${RELEASE}
-	@docker push ${RELEASE}
+	@docker push ${NAME}
