@@ -2,6 +2,7 @@
 Managing Telegram sticker sets and stickers using the bot interface.
 """
 import enum
+import hashlib
 import logging
 import os
 import tempfile
@@ -53,16 +54,14 @@ def start(update, context):  # pylint: disable=unused-argument
 def _sticker_set_name(update, context):
     """Note that the name is different from the title, which is visible to the users"""
     if context.chat_data.get('sticker_set'):
-        return context.chat_data.get('sticker_set')
+        logger.debug(f"Found a channel default sticker set {context.chat_data['sticker_set']}")
+        return context.chat_data['sticker_set']
 
     # Create a unique sticker set per each user and channel
-    chat = update.effective_chat
-    user = update.effective_user
-    # Hash and convert into hex for privacy as it is visible in t.me/stickers
-    prefix_hash = hash(f"{chat.id}{user.id}")
-    # Avoid negative values as Telegram doesn't seem to accept names containing '-'
-    # The name also can't begin with a number so we need to prepend some text
-    prefix = f"Rubus_{abs(prefix_hash):x}"
+    chat, user = update.effective_chat, update.effective_user
+    # Calculate a hash for privacy as it is visible in t.me/stickers
+    hash_object = hashlib.md5(f"{chat.id}{user.id}".encode('utf-8'))
+    prefix = hash_object.hexdigest()
 
     # The name must end in _by_<bot_username> per Telegram rules
     bot = context.bot
