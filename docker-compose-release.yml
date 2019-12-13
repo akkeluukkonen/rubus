@@ -1,0 +1,17 @@
+version: "3.5"
+
+secrets:
+  API_TOKEN:
+    file: ./API_TOKEN
+
+services:
+  bot:
+    image: akkeluukkonen/rubus:release
+    restart: always
+    secrets:
+      - API_TOKEN
+    volumes:
+      - rubus-data:/data
+
+volumes:
+  rubus-data:
