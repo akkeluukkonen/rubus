@@ -13,8 +13,8 @@ build:
 clean:
 	@docker-compose down --volume
 
-run:
-	@docker-compose up --build
+run: build
+	@docker-compose up
 
 latest:
 	@echo "Pushing latest image to remote"
