@@ -17,5 +17,5 @@ pylint = "^2.4"
 rubus = "rubus.main:main"
 
 [build-system]
-requires = ["poetry==0.12.17"]
+requires = ["poetry==1.0.0"]
 build-backend = "poetry.masonry.api"

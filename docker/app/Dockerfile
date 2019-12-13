@@ -1,7 +1,7 @@
 FROM python:3.7.5-slim as builder
 
 # Make sure that POETRY_VERSION is the same in pyproject.toml
-ENV POETRY_VERSION=0.12.17 \
+ENV POETRY_VERSION=1.0.0 \
     PYTHONFAULTHANDLER=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=off
@@ -19,12 +19,11 @@ RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
 
 RUN pip install --quiet "poetry==$POETRY_VERSION"
-RUN poetry config settings.virtualenvs.create false
 
 # Install the dependencies separately into the venv first
 WORKDIR /temp/install
-COPY poetry.lock pyproject.toml /temp/install/
-RUN poetry install --no-interaction --no-ansi --no-dev --quiet
+COPY poetry.lock pyproject.toml ./
+RUN poetry export -f requirements.txt | pip install -r /dev/stdin
 
 # A pure poetry install would not actually install rubus, but instead create
 # a link to the egg. Therefore, build the wheel separately and install it
