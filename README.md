@@ -21,3 +21,5 @@ At least the following functionality are on the implementation list:
   - Post X amount of trending posts from a subreddit for discussion.
 - [ ] Calendar with reminders for important events regarding the group
   - Periodic and/or one-shot reminders of important events
+- [ ] Fok_It comic strip posting
+  - It would be quite fun to have the bot automatically post whenever a new Fok_It is released
