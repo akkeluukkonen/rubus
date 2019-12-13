@@ -50,11 +50,8 @@ def start(update, context):  # pylint: disable=unused-argument
 
 
 def _get_api_token():
-    try:
-        with open("/run/secrets/API_TOKEN") as infile:
-            api_token = infile.read().rstrip()
-    except FileNotFoundError:
-        api_token = os.environ['API_TOKEN']
+    with open("/run/secrets/API_TOKEN") as infile:
+        api_token = infile.read().rstrip()
     return api_token
 
 
