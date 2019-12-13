@@ -6,13 +6,6 @@ ENV POETRY_VERSION=1.0.0 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=off
 
-# A non-root user cannot access files in a volume created with docker-compose
-# without the hack below (PermissionError: [Errno 13] Permission denied).
-# By creating the directory beforehand here the permissions will be inherited
-# in the actual volume and the data will then persist even between multiple
-# docker-compose runs.
-RUN useradd runner && mkdir /data && chown -R runner:runner /data
-
 # Install everything into a virtualenv for multi-stage building
 RUN python -m venv /venv
 ENV PATH="/venv/bin:$PATH"
@@ -35,6 +28,11 @@ FROM python:3.7.5-slim AS final
 COPY --from=builder /venv /venv
 ENV PATH="/venv/bin:$PATH"
 
-# De-elevate from root for security
+# A non-root user cannot access files in a volume created with docker-compose
+# without the hack below (PermissionError: [Errno 13] Permission denied).
+# By creating the directory beforehand here the permissions will be inherited
+# in the actual volume and the data will then persist even between multiple
+# docker-compose runs.
+RUN useradd runner && mkdir /data && chown -R runner:runner /data
 USER runner
 ENTRYPOINT [ "rubus", "--docker" ]
