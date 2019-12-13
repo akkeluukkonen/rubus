@@ -66,7 +66,7 @@ def _sticker_set_name(update, context):
     # The name must end in _by_<bot_username> per Telegram rules
     bot = context.bot
     bot_user_account = bot.get_me()
-    sticker_set_name = f"{prefix}_by_{bot_user_account['username']}"
+    sticker_set_name = f"Set_{prefix}_by_{bot_user_account['username']}"
     logger.debug(f"Formed sticker set name '{sticker_set_name}'")
     return sticker_set_name
 
