@@ -6,9 +6,7 @@ secrets:
 
 services:
   bot:
-    build:
-      context: .
-      dockerfile: ./docker/app/Dockerfile
+    image: akkeluukkonen/rubus:latest
     restart: always
     secrets:
       - API_TOKEN
