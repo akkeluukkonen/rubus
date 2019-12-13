@@ -12,7 +12,7 @@ A secondary goal is to learn how to properly take advantage of Docker. I wish to
 
 At least the following functionality are on the implementation list:
 
-- [ ] Channel specific sticker sets
+- [x] Channel specific sticker sets
   - It's quite inconvenient to manually add and update sticker sets created by photos shared in the chat. Therefore, Rubus should be able to semi-automatically handle this.
 - [ ] Daily weather reporting at scheduled times
   - Simply tell what the weather is going to be for the day.
