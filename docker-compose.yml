@@ -7,9 +7,13 @@ secrets:
 services:
   bot:
     build:
-      args:
-        poetry_version: ${POETRY_VERSION}
       context: .
       dockerfile: ./docker/app/Dockerfile
+    restart: always
     secrets:
       - API_TOKEN
+    volumes:
+      - rubus-data:/data
+
+volumes:
+  rubus-data:

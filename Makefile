@@ -1,5 +1,4 @@
 #!make
-include .env
 
 NAME := akkeluukkonen/rubus
 TAG := $$(git rev-parse HEAD)
@@ -10,7 +9,7 @@ RELEASE := ${NAME}:release
 all: build push
 
 build:
-	@docker build -t ${IMAGE} -f docker/app/Dockerfile --build-arg poetry_version=${POETRY_VERSION} .
+	@docker build -t ${IMAGE} -f docker/app/Dockerfile .
 	@docker tag ${IMAGE} ${LATEST}
 
 push:

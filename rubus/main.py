@@ -13,6 +13,10 @@ from rubus import helper
 from rubus import stickers
 
 
+DOCKER_VOLUME_FILEPATH = "/data"
+FILEPATH_LOG = os.path.join(DOCKER_VOLUME_FILEPATH, "rubus.log")
+FILEPATH_DATA = os.path.join(DOCKER_VOLUME_FILEPATH, "bot-data.pkl")
+
 formatter_stream = logging.Formatter(
     "%(asctime)s.%(msecs)03d - %(levelname)s - %(module)s - %(message)s",
     datefmt="%H:%M:%S")
@@ -21,7 +25,7 @@ handler_stream.setFormatter(formatter_stream)
 
 formatter_file = logging.Formatter(
     "%(asctime)s.%(msecs)03d - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s")
-handler_file = logging.FileHandler("rubus.log", 'w')
+handler_file = logging.FileHandler(FILEPATH_LOG, 'w')
 handler_file.setFormatter(formatter_file)
 
 logger = logging.getLogger('rubus')
@@ -62,10 +66,8 @@ def error(update, context):
 def main():
     """Run the bot."""
     logger.info("Initializing rubus...")
-
     api_token = _get_api_token()
-
-    persistence = telegram.ext.PicklePersistence("rubus_data.pkl")
+    persistence = telegram.ext.PicklePersistence(FILEPATH_DATA)
     updater = telegram.ext.Updater(api_token, use_context=True, persistence=persistence)
     updater.dispatcher.add_error_handler(error)
 
