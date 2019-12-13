@@ -22,13 +22,13 @@ RUN pip install --quiet "poetry==$POETRY_VERSION"
 # Install the dependencies separately into the venv first
 WORKDIR /temp/install
 COPY poetry.lock pyproject.toml ./
-RUN poetry export -f requirements.txt | pip install -r /dev/stdin
+RUN poetry export -f requirements.txt | pip install --quiet -r /dev/stdin
 
 # A pure poetry install would not actually install rubus, but instead create
 # a link to the egg. Therefore, build the wheel separately and install it
 # using pip. Afterwards rubus is actually installed also within the venv!
 COPY rubus ./rubus
-RUN poetry build && pip install --no-dependencies ./dist/rubus-*py3-none-any.whl
+RUN poetry build --quiet && pip install --no-dependencies ./dist/rubus-*py3-none-any.whl
 
 FROM python:3.7.5-slim AS final
 
