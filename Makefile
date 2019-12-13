@@ -1,20 +1,18 @@
 #!make
 
 NAME := akkeluukkonen/rubus
-TAG := $$(git rev-parse HEAD)
-IMAGE := ${NAME}:${TAG}
+COMMIT := $$(git rev-parse HEAD)
+IMAGE := ${NAME}:${COMMIT}
 LATEST := ${NAME}:latest
 RELEASE := ${NAME}:release
 
-all: build push
-
 build:
-	@docker build -t ${IMAGE} -f docker/app/Dockerfile .
+	@docker build -t ${IMAGE} --label git-commit=${COMMIT} -f docker/app/Dockerfile .
 	@docker tag ${IMAGE} ${LATEST}
 
-push:
-	@echo "Pushing all images for ${NAME} to remote"
-	@docker push ${NAME}
+latest:
+	@echo "Pushing latest image to remote"
+	@docker push ${LATEST}
 
 release:
 	@echo "Tagging latest build as release and pushing it to remote"
