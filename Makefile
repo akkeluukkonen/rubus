@@ -10,6 +10,12 @@ build:
 	@docker build -t ${IMAGE} --label git-commit=${COMMIT} -f docker/app/Dockerfile .
 	@docker tag ${IMAGE} ${LATEST}
 
+clean:
+	@docker-compose down --volume
+
+run:
+	@docker-compose up --build
+
 latest:
 	@echo "Pushing latest image to remote"
 	@docker push ${LATEST}
