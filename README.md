@@ -2,11 +2,17 @@
 
 A Telegram bot intended for personal use by me and my friends.
 
+# Usage
+
+Running the release version:
+
+- Copy the *docker-compose-release.yml* as *docker-compose.yml* locally
+- Create the *API_TOKEN* file and put your Telegram bot token to the file
+- Run `docker-compose up -d` to start the project as a daemon
+
 ## Goals
 
 This project is mainly for me to have fun & learn new techniques while programming at home after work. However, the bot is also meant to be used in "production" in a private Telegram chat.
-
-A secondary goal is to learn how to properly take advantage of Docker. I wish to have the bot running on my personal server as my previous bot is also running there. However, the previous one is running quite non-professionally directly in a screened terminal...
 
 ### Functionality
 
