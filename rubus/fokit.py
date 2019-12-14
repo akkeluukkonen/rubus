@@ -78,7 +78,7 @@ def _post_latest_comic(context):
 def posting_start(update, context):
     """Start posting the comic strips daily at noon from Monday to Friday"""
     noon = datetime.time(12, 00)
-    monday_to_friday = list(range(5))
+    monday_to_friday = tuple(range(5))
     query = update.callback_query
     job = context.job_queue.run_daily(
         _post_latest_comic, noon, monday_to_friday, context=query.message.chat_id)
