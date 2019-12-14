@@ -10,6 +10,7 @@ from telegram.ext import ConversationHandler
 from telegram.ext import CommandHandler, MessageHandler, Filters
 
 from rubus import helper
+from rubus import fokit
 from rubus import stickers
 
 
@@ -71,6 +72,7 @@ def main():
     handler_conversation = telegram.ext.ConversationHandler(
         entry_points=[
             CommandHandler('start', start),
+            fokit.handler_conversation,
             stickers.handler_conversation,
             ],
         states={

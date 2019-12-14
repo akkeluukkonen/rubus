@@ -9,6 +9,8 @@ license = "MIT"
 python = "^3.7"
 python-telegram-bot = "^12.2"
 Pillow = "^6.2"
+requests = "^2.22.0"
+beautifulsoup4 = "^4.8.1"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.4"
