@@ -4,21 +4,29 @@ NAME := akkeluukkonen/rubus
 COMMIT := $$(git rev-parse HEAD)
 LATEST := ${NAME}:latest
 RELEASE := ${NAME}:release
+VERSION := patch # Default
 
-build:
+git-dirty-check:
+	# Will fail if the repository is dirty to avoid mislabeling images
+	git diff --quiet || exit 1
+
+build: git-dirty-check
 	@docker build -t ${LATEST} --label git-commit=${COMMIT} -f docker/app/Dockerfile .
-
-clean:
-	@docker-compose down --volume
 
 run: build
 	@docker-compose up
 
 push:
-	@echo "Pushing all relevant images to remote"
-	@docker push ${NAME}
+	@docker push ${LATEST}
 
-release:
-	@docker tag ${LATEST} ${NAME}:$$(poetry version ${VERSION} | rev | cut -d' ' -f1 | rev)
+version: git-dirty-check
+	@poetry version ${VERSION} | rev | cut -d' ' -f1 | rev > .release-version
+	@git commit -a -m "Bump version to $$(cat .release-version)"
+
+release: version build
+	@docker tag ${LATEST} ${NAME}:$$(cat .release-version)
 	@docker tag ${LATEST} ${RELEASE}
-	@docker push ${NAME}
+	@docker push ${LATEST}
+	@docker push ${RELEASE}
+	@docker push ${NAME}:$$(cat .release-version)
+	@rm .release-version
