@@ -37,6 +37,7 @@ class Command(enum.IntEnum):
     """
     POSTING_ENABLE = enum.auto()
     POSTING_DISABLE = enum.auto()
+    CANCEL = enum.auto()
 
 
 def _fetch_latest_comic_url():
@@ -91,6 +92,13 @@ def posting_disable(update, context):
     return ConversationHandler.END
 
 
+def cancel(update, context):  # pylint: disable=unused-argument
+    """Don't make any changes"""
+    query = update.callback_query
+    query.message.edit_text("Canceled")
+    return ConversationHandler.END
+
+
 def start(update, context):
     """Present the user all available fokit configuration options"""
     if 'fokit-enabled' not in context.chat_data:
@@ -101,9 +109,9 @@ def start(update, context):
     else:
         button = InlineKeyboardButton("Start posting Fok-It daily at noon", callback_data=Command.POSTING_ENABLE)
 
-    keyboard = [[button]]
+    keyboard = [[button], [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text("Select configuration option:", reply_markup=reply_markup)
+    update.message.reply_text("Select option:", reply_markup=reply_markup)
     return State.MENU
 
 
@@ -127,6 +135,7 @@ handler_conversation = ConversationHandler(
         State.MENU: [
             CallbackQueryHandler(posting_enable, pattern=f"^{Command.POSTING_ENABLE}$"),
             CallbackQueryHandler(posting_disable, pattern=f"^{Command.POSTING_DISABLE}$"),
+            CallbackQueryHandler(cancel, pattern=f"^{Command.CANCEL}$"),
             ],
     },
     fallbacks=[MessageHandler(Filters.all, helper.confused)]
