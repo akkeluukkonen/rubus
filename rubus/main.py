@@ -67,7 +67,8 @@ def main():
     api_token = _get_api_token()
     persistence = telegram.ext.PicklePersistence(FILEPATH_DATA)
     updater = telegram.ext.Updater(api_token, use_context=True, persistence=persistence)
-    updater.dispatcher.add_error_handler(error)
+    dispatcher = updater.dispatcher
+    dispatcher.add_error_handler(error)
 
     handler_conversation = telegram.ext.ConversationHandler(
         entry_points=[
@@ -82,8 +83,10 @@ def main():
             MessageHandler(Filters.all, helper.confused)
         ]
     )
+    dispatcher.add_handler(handler_conversation)
 
-    updater.dispatcher.add_handler(handler_conversation)
+    logger.debug("Bot ready, initializing submodules")
+    fokit.init(dispatcher)
 
     logger.info("Init done. Starting...")
     updater.start_polling(poll_interval=0.1)
