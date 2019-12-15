@@ -35,7 +35,7 @@ class Command(enum.IntEnum):
 
     Can be directly used as a value for the CallbackQueryHandler from the InlineKeyboard.
     """
-    SCHEDULING_ENABLE = enum.auto()
+    POST_RANDOM = enum.auto()
     SCHEDULING_DISABLE = enum.auto()
     CANCEL = enum.auto()
 
@@ -85,6 +85,18 @@ def _post_comic_latest(context):
     _post_comic_from_url(context, latest_url, "Fok-It of the day")
 
 
+def post_random(update, context):
+    """Post a random Fok-It on demand"""
+    # Need to build a database of the available images
+    # From the frontpage grab the link for the page of the first individual image
+    # Crawl backwards from there to gather all of the links since they don't seem to be deterministic
+    # From the links grab the URLs for the actual images
+    # Store everything in a separate persistent storage to avoid re-crawling on subsequent starts
+    # When demanded, grab a random image URL and post the image on the channel
+    raise NotImplementedError
+    return ConversationHandler.END
+
+
 def scheduling_enable(update, context):
     """Enable scheduled posting of the comic strips"""
     context.chat_data['fokit-scheduled'] = True
@@ -113,12 +125,18 @@ def start(update, context):
     if 'fokit-scheduled' not in context.chat_data:
         context.chat_data['fokit-scheduled'] = False
 
-    if context.chat_data['fokit-scheduled']:
-        button = InlineKeyboardButton("Stop posting Fok-It daily at noon", callback_data=Command.SCHEDULING_DISABLE)
-    else:
-        button = InlineKeyboardButton("Start posting Fok-It daily at noon", callback_data=Command.SCHEDULING_ENABLE)
+    post = InlineKeyboardButton("Post a random Fok-It", callback_data=Command.POST_RANDOM)
 
-    keyboard = [[button], [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)]]
+    if context.chat_data['fokit-scheduled']:
+        scheduled = InlineKeyboardButton("Stop posting Fok-It daily at noon", callback_data=Command.SCHEDULING_DISABLE)
+    else:
+        scheduled = InlineKeyboardButton("Start posting Fok-It daily at noon", callback_data=Command.SCHEDULING_ENABLE)
+
+    keyboard = [
+        [scheduled],
+        [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
+        [post],
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("Select option:", reply_markup=reply_markup)
     return State.MENU
@@ -142,6 +160,7 @@ handler_conversation = ConversationHandler(
     entry_points=[CommandHandler('fokit', start)],
     states={
         State.MENU: [
+            CallbackQueryHandler(post_random, pattern=f"^{Command.POST_RANDOM}$"),
             CallbackQueryHandler(scheduling_disable, pattern=f"^{Command.SCHEDULING_DISABLE}$"),
             CallbackQueryHandler(scheduling_enable, pattern=f"^{Command.SCHEDULING_ENABLE}$"),
             CallbackQueryHandler(cancel, pattern=f"^{Command.CANCEL}$"),
