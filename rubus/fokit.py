@@ -35,8 +35,8 @@ class Command(enum.IntEnum):
 
     Can be directly used as a value for the CallbackQueryHandler from the InlineKeyboard.
     """
-    POSTING_ENABLE = enum.auto()
-    POSTING_DISABLE = enum.auto()
+    SCHEDULING_ENABLE = enum.auto()
+    SCHEDULING_DISABLE = enum.auto()
     CANCEL = enum.auto()
 
 
@@ -76,17 +76,17 @@ def _post_latest_comic(context):
         context.bot.send_photo(chat_id, image_file, "Fok-It of the day")
 
 
-def posting_enable(update, context):
+def scheduling_enable(update, context):
     """Enable scheduled posting of the comic strips"""
-    context.chat_data['fokit-enabled'] = True
+    context.chat_data['fokit-scheduled'] = True
     query = update.callback_query
     query.message.edit_text("Scheduled Fok-It posting enabled at noon on weekdays")
     return ConversationHandler.END
 
 
-def posting_disable(update, context):
+def scheduling_disable(update, context):
     """Disable scheduled posting of the comic strips"""
-    context.chat_data['fokit-enabled'] = False
+    context.chat_data['fokit-scheduled'] = False
     query = update.callback_query
     query.message.edit_text("Scheduled Fok-It posting disabled")
     return ConversationHandler.END
@@ -101,13 +101,13 @@ def cancel(update, context):  # pylint: disable=unused-argument
 
 def start(update, context):
     """Present the user all available fokit configuration options"""
-    if 'fokit-enabled' not in context.chat_data:
-        context.chat_data['fokit-enabled'] = False
+    if 'fokit-scheduled' not in context.chat_data:
+        context.chat_data['fokit-scheduled'] = False
 
-    if context.chat_data['fokit-enabled']:
-        button = InlineKeyboardButton("Stop posting Fok-It daily at noon", callback_data=Command.POSTING_DISABLE)
+    if context.chat_data['fokit-scheduled']:
+        button = InlineKeyboardButton("Stop posting Fok-It daily at noon", callback_data=Command.SCHEDULING_DISABLE)
     else:
-        button = InlineKeyboardButton("Start posting Fok-It daily at noon", callback_data=Command.POSTING_ENABLE)
+        button = InlineKeyboardButton("Start posting Fok-It daily at noon", callback_data=Command.SCHEDULING_ENABLE)
 
     keyboard = [[button], [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -126,15 +126,15 @@ def init(dispatcher):
         # Create the job even for chats not using the feature as it is easier to simply
         # enable / disable the job per chat instead of creating and destroying it repeatedly
         job = job_queue.run_daily(_post_latest_comic, noon, monday_to_friday, context=chat_id)
-        job.enabled = chat_data.get('fokit-enabled', False)
+        job.enabled = chat_data.get('fokit-scheduled', False)
 
 
 handler_conversation = ConversationHandler(
     entry_points=[CommandHandler('fokit', start)],
     states={
         State.MENU: [
-            CallbackQueryHandler(posting_disable, pattern=f"^{Command.POSTING_DISABLE}$"),
-            CallbackQueryHandler(posting_enable, pattern=f"^{Command.POSTING_ENABLE}$"),
+            CallbackQueryHandler(scheduling_disable, pattern=f"^{Command.SCHEDULING_DISABLE}$"),
+            CallbackQueryHandler(scheduling_enable, pattern=f"^{Command.SCHEDULING_ENABLE}$"),
             CallbackQueryHandler(cancel, pattern=f"^{Command.CANCEL}$"),
             ],
     },
