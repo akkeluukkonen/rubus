@@ -40,7 +40,7 @@ class Command(enum.IntEnum):
     CANCEL = enum.auto()
 
 
-def _fetch_latest_comic_url():
+def _fetch_comic_latest_url():
     response = requests.get(URL_FOKIT)
     if response.status_code != http.HTTPStatus.OK:
         logger.warning(f"Failed to fetch comic due to HTTP code {response.status_code}!")
@@ -58,22 +58,31 @@ def _fetch_latest_comic_url():
     return latest_url
 
 
-def _post_latest_comic(context):
+def _post_comic_from_url(context, url, message=None):
     chat_id = context.job.context
-    latest_url = _fetch_latest_comic_url()
-
-    if latest_url is None:
-        context.bot.send_message(chat_id, "Failed to fetch the latest Fok-It!")
-        return
-
-    response = requests.get(latest_url)
+    response = requests.get(url)
     image_data = response.content
 
     # We need a filelike object for bot.send_photo(...)
     with tempfile.TemporaryFile() as image_file:
         image_file.write(image_data)
         image_file.seek(0)  # Rewind back to start for the bot to read it correctly
-        context.bot.send_photo(chat_id, image_file, "Fok-It of the day")
+
+        if message:
+            context.bot.send_photo(chat_id, image_file, message)
+        else:
+            context.bot.send_photo(chat_id, image_file)
+
+
+def _post_comic_latest(context):
+    chat_id = context.job.context
+    latest_url = _fetch_comic_latest_url()
+
+    if latest_url is None:
+        context.bot.send_message(chat_id, "Failed to fetch the latest Fok-It!")
+        return
+
+    _post_comic_from_url(context, latest_url, "Fok-It of the day")
 
 
 def scheduling_enable(update, context):
@@ -125,7 +134,7 @@ def init(dispatcher):
     for chat_id in chat_data:
         # Create the job even for chats not using the feature as it is easier to simply
         # enable / disable the job per chat instead of creating and destroying it repeatedly
-        job = job_queue.run_daily(_post_latest_comic, noon, monday_to_friday, context=chat_id)
+        job = job_queue.run_daily(_post_comic_latest, noon, monday_to_friday, context=chat_id)
         job.enabled = chat_data.get('fokit-scheduled', False)
 
 
