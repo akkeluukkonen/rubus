@@ -80,7 +80,7 @@ def posting_enable(update, context):
     """Enable scheduled posting of the comic strips"""
     context.chat_data['fokit-enabled'] = True
     query = update.callback_query
-    query.message.edit_text("Scheduled Fok-It posting enabled")
+    query.message.edit_text("Scheduled Fok-It posting enabled at noon on weekdays")
     return ConversationHandler.END
 
 
@@ -133,8 +133,8 @@ handler_conversation = ConversationHandler(
     entry_points=[CommandHandler('fokit', start)],
     states={
         State.MENU: [
-            CallbackQueryHandler(posting_enable, pattern=f"^{Command.POSTING_ENABLE}$"),
             CallbackQueryHandler(posting_disable, pattern=f"^{Command.POSTING_DISABLE}$"),
+            CallbackQueryHandler(posting_enable, pattern=f"^{Command.POSTING_ENABLE}$"),
             CallbackQueryHandler(cancel, pattern=f"^{Command.CANCEL}$"),
             ],
     },
