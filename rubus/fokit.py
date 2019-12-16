@@ -37,6 +37,7 @@ class Command(enum.IntEnum):
     """
     POST_RANDOM = enum.auto()
     SCHEDULING_DISABLE = enum.auto()
+    SCHEDULING_ENABLE = enum.auto()
     CANCEL = enum.auto()
 
 
