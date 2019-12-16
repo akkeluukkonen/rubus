@@ -20,7 +20,10 @@ def config_load():
 
 
 def confused(update, context):  # pylint: disable=unused-argument
-    """Did not understand what the user was requesting"""
+    """Handler for unkown states in ConversationHandler
+
+    Automatically ends the conversation to avoid weird situations.
+    """
     message = update.message
     message.reply_text(
         "Sorry, I'm confused and didn't understand what you wanted me to do.\n"
