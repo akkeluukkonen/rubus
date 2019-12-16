@@ -5,7 +5,10 @@ import datetime
 import enum
 import http
 import logging
+import os
+import pickle
 import tempfile
+import time
 
 import requests
 from bs4 import BeautifulSoup
@@ -18,7 +21,8 @@ from rubus import helper
 
 logger = logging.getLogger('rubus')
 
-URL_FOKIT = "https://hs.fi/nyt/fokit"
+URL_BASE = "https://hs.fi"
+URL_FOKIT = f"{URL_BASE}/nyt/fokit"
 
 
 class State(enum.IntEnum):
@@ -41,7 +45,81 @@ class Command(enum.IntEnum):
     CANCEL = enum.auto()
 
 
-def _fetch_comic_latest_url():
+def fetch_comic_url_latest():
+    """Fetch URL of the latest comic on its individual page"""
+    response = requests.get(URL_FOKIT)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    figure_elements = soup.find_all('figure')
+    # Latest comic should be first available figure element
+    figure_element_first = figure_elements[0]
+    # Grab the link for the individual page of the comic as we can start crawling from that
+    comic_uri_part = figure_element_first.find('meta', {'itemprop': 'contentUrl'})['content']
+    comic_url = f"{URL_BASE}{comic_uri_part}"
+    return comic_url
+
+
+def _fetch_comic_url_all(url_current):
+    # Fake the first one to be of the same form
+    uri_previous_part = {'href': url_current.lstrip(URL_BASE)}
+    while uri_previous_part is not None:
+        url_current = f"{URL_BASE}/{uri_previous_part['href']}"
+        yield url_current
+
+        # Avoid looking like an attacker
+        time.sleep(0.2)
+
+        response = requests.get(url_current)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        # Crawl backwards using the "Previous" button on the page
+        uri_previous_part = soup.find('a', {'class': 'article-navlink prev'})
+
+
+def fetch_comic_url_all():
+    """Fetch all of the URLs for the Fok-It comics"""
+    latest_url = fetch_comic_url_latest()
+    comic_urls = list(_fetch_comic_url_all(latest_url))
+    return comic_urls
+
+
+def fetch_comic_images_all(download_directory):
+    """Fetch all of the images for the Fok-It comics
+
+    Data will be saved in a pickled file to the given download directory as a pickled index file,
+    and as separate image files.
+
+    Index file format:
+    [
+        {'date': "Monday, 1.1.2018", 'filepath': "download_filepath/<image_identifier>.jpg},
+        {'date': "Tuesay, 2.1.2018", 'filepath': "download_filepath/<image_identifier>.jpg},
+        ...
+    ]
+    """
+    index = []
+    for url in fetch_comic_url_all():
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        date = soup.find('span', {'class': 'date'}).text
+        image_element = soup.find_all('img')
+        # The element includes a low-res and high-res partial URI but we want only the high-res one,
+        # which is in the attribute 'data-srcset' in the format "<link> 1920w"
+        image_uri = image_element['data-srcset'].rstrip(" 1920w")
+        image_url = f"{URL_BASE}/{image_uri}"
+        response = requests.get(image_url)
+        image_data = response.content
+
+        image_filename = os.path.basename(image_url.split('/')[-1])
+        image_filepath = os.path.join(download_directory, image_filename)
+        with open(image_filepath, "wb") as image_file:
+            image_file.write(image_data)
+
+        index.append({'date': date, 'filepath': image_filepath})
+
+    index_filepath = os.path.join(download_directory, "index-fokit.pkl")
+    with open(index_filepath, "wb") as index_file:
+        pickle.dump(index, index_file)
+
+
+def _fetch_comic_latest_image_url():
     response = requests.get(URL_FOKIT)
     if response.status_code != http.HTTPStatus.OK:
         logger.warning(f"Failed to fetch comic due to HTTP code {response.status_code}!")
