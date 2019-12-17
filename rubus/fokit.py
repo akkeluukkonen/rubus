@@ -3,11 +3,9 @@ Automatically post the latest Fok-It comic strip to a Telegram channel requestin
 """
 import datetime
 import enum
-import http
 import logging
 import os
 import pickle
-import tempfile
 import time
 
 import requests
@@ -21,6 +19,8 @@ from rubus import helper
 
 logger = logging.getLogger('rubus')
 
+CONFIG = helper.config_load()
+FILEPATH_INDEX = os.path.join(CONFIG['filepaths']['storage'], "fokit_index.pkl")
 URL_BASE = "https://hs.fi"
 URL_FOKIT = f"{URL_BASE}/nyt/fokit"
 
@@ -74,14 +74,45 @@ def _fetch_comic_url_all(url_current):
         uri_previous_part = soup.find('a', {'class': 'article-navlink prev'})
 
 
-def fetch_comic_url_all():
-    """Fetch all of the URLs for the Fok-It comics"""
-    latest_url = fetch_comic_url_latest()
-    comic_urls = list(_fetch_comic_url_all(latest_url))
-    return comic_urls
+def fetch_comic_information(url):
+    """Fetch all relevant information related to a comic
+
+    Simultaneously save the image file to our dedicated storage location using the same
+    filename as the host server is using. This filepath is stored in the returned dict.
+
+    :return: Dictionary of format
+        {
+            'date': "Maanantai, 2.1.2019",
+            'filepath': "download_filepath/<image_identifier>.jpg},
+            'url: "url"
+        }
+    """
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    date = soup.find('span', {'class': 'date'}).text
+
+    image_element = soup.find('img')
+    # The element includes a low-res and high-res partial URI but we want only the high-res one,
+    # which is in the attribute 'data-srcset' in the format "<link> 1920w"
+    image_uri = image_element['data-srcset'].rstrip(" 1920w")
+    image_url = f"{URL_BASE}/{image_uri}"
+    response = requests.get(image_url)
+    image_data = response.content
+
+    image_filename = os.path.basename(image_url.split('/')[-1])
+    image_filepath = os.path.join(CONFIG['filepaths']['storage'], image_filename)
+    with open(image_filepath, 'wb') as image_file:
+        image_file.write(image_data)
+
+    data = {
+        'date': date,
+        'filepath': image_filepath,
+        'url': url
+    }
+    return data
 
 
-def fetch_comic_images_all(download_directory):
+def update_index():
     """Fetch all of the images for the Fok-It comics
 
     Data will be saved in a pickled file to the given download directory as a pickled index file,
@@ -89,79 +120,53 @@ def fetch_comic_images_all(download_directory):
 
     Index file format:
     [
-        {'date': "Monday, 1.1.2018", 'filepath': "download_filepath/<image_identifier>.jpg},
-        {'date': "Tuesay, 2.1.2018", 'filepath': "download_filepath/<image_identifier>.jpg},
+        {<latest>},
         ...
+        {
+            'date': "Maanantai, 2.1.2019",
+            'filepath': "download_filepath/<image_identifier>.jpg},
+            'url: "<url_to_comic_page>"
+        },
+        ...
+        {oldest}
     ]
     """
+    # Grab the current index to avoid creating duplicate entries and crawling unnecessary far
+    # if the same data was already crawled earlier
     index = []
-    for url in fetch_comic_url_all():
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        date = soup.find('span', {'class': 'date'}).text
-        image_element = soup.find_all('img')
-        # The element includes a low-res and high-res partial URI but we want only the high-res one,
-        # which is in the attribute 'data-srcset' in the format "<link> 1920w"
-        image_uri = image_element['data-srcset'].rstrip(" 1920w")
-        image_url = f"{URL_BASE}/{image_uri}"
-        response = requests.get(image_url)
-        image_data = response.content
+    if os.path.exists(FILEPATH_INDEX):
+        with open(FILEPATH_INDEX, 'rb') as index_file:
+            index = pickle.load(index_file)
 
-        image_filename = os.path.basename(image_url.split('/')[-1])
-        image_filepath = os.path.join(download_directory, image_filename)
-        with open(image_filepath, "wb") as image_file:
-            image_file.write(image_data)
+    latest_indexed = index[-1] if index else None
+    # Crawl backwards from the latest available comic
+    url_start_from = fetch_comic_url_latest()
+    for url in _fetch_comic_url_all(url_start_from):
+        data = fetch_comic_information(url)
 
-        index.append({'date': date, 'filepath': image_filepath})
+        if data == latest_indexed:
+            # We already had indexed this far!
+            break
 
-    index_filepath = os.path.join(download_directory, "index-fokit.pkl")
-    with open(index_filepath, "wb") as index_file:
+        index.append(data)
+
+    with open(FILEPATH_INDEX, 'wb') as index_file:
         pickle.dump(index, index_file)
 
-
-def _fetch_comic_latest_image_url():
-    response = requests.get(URL_FOKIT)
-    if response.status_code != http.HTTPStatus.OK:
-        logger.warning(f"Failed to fetch comic due to HTTP code {response.status_code}!")
-        return None
-
-    soup = BeautifulSoup(response.content, 'html.parser')
-    img_element = soup.find_all('img')
-    # Latest comic should be first available img element
-    img_element_first = img_element[0]
-    # The element includes a low-res and high-res link but we want only the high-res one,
-    # which is the first one in attribute 'data-srcset' containing whitespace separated links
-    image_urls = img_element_first.attrs['data-srcset'].split()
-    latest_uri = image_urls[0]
-    latest_url = f"https:{latest_uri}"
-    return latest_url
+    return index
 
 
-def _post_comic_from_url(context, url, message=None):
-    chat_id = context.job.context
-    response = requests.get(url)
-    image_data = response.content
+def post_comic_latest(context):
+    """Post the latest available comic
 
-    # We need a filelike object for bot.send_photo(...)
-    with tempfile.TemporaryFile() as image_file:
-        image_file.write(image_data)
-        image_file.seek(0)  # Rewind back to start for the bot to read it correctly
+    Basically this will post the Fok-It of the day assuming you call it correctly on a weekday.
+    """
+    index = update_index()
 
-        if message:
-            context.bot.send_photo(chat_id, image_file, message)
-        else:
-            context.bot.send_photo(chat_id, image_file)
-
-
-def _post_comic_latest(context):
-    chat_id = context.job.context
-    latest_url = _fetch_comic_latest_url()
-
-    if latest_url is None:
-        context.bot.send_message(chat_id, "Failed to fetch the latest Fok-It!")
-        return
-
-    _post_comic_from_url(context, latest_url, "Fok-It of the day")
+    image_latest_filepath = index[-1]['filepath']
+    with open(image_latest_filepath, 'rb') as image_file:
+        chat_id = context.job.context
+        context.bot.send_photo(chat_id, image_file, "Fok-It of the day")
 
 
 def post_random(update, context):
@@ -231,7 +236,7 @@ def init(dispatcher):
     for chat_id in chat_data:
         # Create the job even for chats not using the feature as it is easier to simply
         # enable / disable the job per chat instead of creating and destroying it repeatedly
-        job = job_queue.run_daily(_post_comic_latest, noon, monday_to_friday, context=chat_id)
+        job = job_queue.run_daily(post_comic_latest, noon, monday_to_friday, context=chat_id)
         job.enabled = chat_data.get('fokit-scheduled', False)
 
 
