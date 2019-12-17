@@ -1,12 +1,6 @@
 {
     "filepaths": {
-        "storage": {
-            "docker": "/data",
-            "native": "TODO"
-        },
-        "api_token" : {
-            "docker": "/run/secrets/API_TOKEN",
-            "native": "API_TOKEN"
-        }
+        "storage": "/data/",
+        "api_token" : "/run/secrets/API_TOKEN"
     }
 }
