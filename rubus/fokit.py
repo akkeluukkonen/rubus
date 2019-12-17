@@ -101,7 +101,8 @@ def fetch_comic_information(url):
     # The element includes a low-res and high-res partial URI but we want only the high-res one,
     # which is in the attribute 'data-srcset' in the format "<link> 1920w"
     image_uri = image_element['data-srcset'].rstrip(" 1920w")
-    image_url = f"{URL_BASE}/{image_uri}"
+    # image_uri is of format '//hs.mediadelivery.fi/...'
+    image_url = f"https:{image_uri}"
     response = requests.get(image_url)
     image_data = response.content
 
