@@ -184,7 +184,6 @@ def post_random(update, context):
 
     query = update.callback_query
     image_random = random.choice(index)
-    logger.debug(image_random['filepath'])
     with open(image_random['filepath'], 'rb') as image_file:
         chat_id = query.message.chat['id']
         context.bot.send_photo(chat_id, image_file)
