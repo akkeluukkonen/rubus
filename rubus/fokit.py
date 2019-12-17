@@ -229,8 +229,8 @@ def start(update, context):
 
     keyboard = [
         [scheduled],
-        [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
         [post],
+        [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("Select option:", reply_markup=reply_markup)
