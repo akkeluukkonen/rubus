@@ -90,7 +90,12 @@ def fetch_comic_information(url):
     """
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
+
     date = soup.find('span', {'class': 'date'}).text
+    # Comics released in current year don't include the year explicitly
+    if date.endswith('.'):
+        current_year = datetime.datetime.today().year
+        date += str(current_year)
 
     image_element = soup.find('img')
     # The element includes a low-res and high-res partial URI but we want only the high-res one,
