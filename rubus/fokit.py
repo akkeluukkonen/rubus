@@ -182,12 +182,13 @@ def post_random(update, context):
     with open(FILEPATH_INDEX, 'rb') as index_file:
         index = pickle.load(index_file)
 
+    query = update.callback_query
     image_random = random.choice(index)
+    logger.debug(image_random['filepath'])
     with open(image_random['filepath'], 'rb') as image_file:
-        chat_id = context.job.context
+        chat_id = query.message.chat['id']
         context.bot.send_photo(chat_id, image_file)
 
-    query = update.callback_query
     query.message.edit_text(f"Fok-It of {image_random['date']}")
 
     return ConversationHandler.END
