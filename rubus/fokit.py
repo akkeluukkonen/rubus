@@ -149,6 +149,7 @@ def update_index():
             # We already had indexed this far!
             break
 
+        logger.debug(f"Fetched information for Fok-It of {data['date']}")
         index.append(data)
 
     with open(FILEPATH_INDEX, 'wb') as index_file:
@@ -243,6 +244,9 @@ def init(dispatcher):
         # enable / disable the job per chat instead of creating and destroying it repeatedly
         job = job_queue.run_daily(post_comic_latest, noon, monday_to_friday, context=chat_id)
         job.enabled = chat_data.get('fokit-scheduled', False)
+
+    logger.info("Updating index for Fok-It comics")
+    update_index()
 
 
 handler_conversation = ConversationHandler(
