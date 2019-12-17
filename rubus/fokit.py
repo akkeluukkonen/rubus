@@ -6,6 +6,7 @@ import enum
 import logging
 import os
 import pickle
+import random
 import time
 
 import requests
@@ -170,14 +171,18 @@ def post_comic_latest(context):
 
 
 def post_random(update, context):
-    """Post a random Fok-It on demand"""
-    # Need to build a database of the available images
-    # From the frontpage grab the link for the page of the first individual image
-    # Crawl backwards from there to gather all of the links since they don't seem to be deterministic
-    # From the links grab the URLs for the actual images
-    # Store everything in a separate persistent storage to avoid re-crawling on subsequent starts
-    # When demanded, grab a random image URL and post the image on the channel
-    raise NotImplementedError
+    """Post a random Fok-It"""
+    with open(FILEPATH_INDEX, 'rb') as index_file:
+        index = pickle.load(index_file)
+
+    image_random = random.choice(index)
+    with open(image_random['filepath'], 'rb') as image_file:
+        chat_id = context.job.context
+        context.bot.send_photo(chat_id, image_file)
+
+    query = update.callback_query
+    query.message.edit_text(f"Fok-It of {image_random['date']}")
+
     return ConversationHandler.END
 
 
