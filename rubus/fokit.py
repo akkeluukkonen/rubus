@@ -24,6 +24,8 @@ CONFIG = helper.config_load()
 FILEPATH_INDEX = os.path.join(CONFIG['filepaths']['storage'], "fokit_index.pkl")
 URL_BASE = "https://hs.fi"
 URL_FOKIT = f"{URL_BASE}/nyt/fokit"
+NOON = datetime.time(12, 00)
+MONDAY_TO_FRIDAY = tuple(range(5))
 
 
 class State(enum.IntEnum):
@@ -197,6 +199,10 @@ def scheduling_enable(update, context):
     """Enable scheduled posting of the comic strips"""
     context.chat_data['fokit-scheduled'] = True
     query = update.callback_query
+    chat_id = query.message.chat['id']
+
+    context.job_queue.run_daily(post_comic_latest, NOON, MONDAY_TO_FRIDAY, context=chat_id)
+
     query.message.edit_text("Scheduled Fok-It posting enabled at noon on weekdays")
     return ConversationHandler.END
 
@@ -205,6 +211,11 @@ def scheduling_disable(update, context):
     """Disable scheduled posting of the comic strips"""
     context.chat_data['fokit-scheduled'] = False
     query = update.callback_query
+    chat_id = query.message.chat['id']
+
+    job = next(job for job in context.job_queue.jobs() if job.context == chat_id)
+    job.schedule_removal()
+
     query.message.edit_text("Scheduled Fok-It posting disabled")
     return ConversationHandler.END
 
@@ -240,16 +251,13 @@ def start(update, context):
 
 def init(dispatcher):
     """At bot startup this function should be executed to initialize the jobs correctly"""
-    noon = datetime.time(12, 00)
-    monday_to_friday = tuple(range(5))
-
     job_queue = dispatcher.job_queue
     chat_data = dispatcher.chat_data
     for chat_id in chat_data:
         # Create the job even for chats not using the feature as it is easier to simply
         # enable / disable the job per chat instead of creating and destroying it repeatedly
-        job = job_queue.run_daily(post_comic_latest, noon, monday_to_friday, context=chat_id)
-        job.enabled = chat_data.get('fokit-scheduled', False)
+        job = job_queue.run_daily(post_comic_latest, NOON, MONDAY_TO_FRIDAY, context=chat_id)
+        job.enabled = chat_data[chat_id].get('fokit-scheduled', False)
 
     logger.info("Updating index for Fok-It comics")
     update_index()
