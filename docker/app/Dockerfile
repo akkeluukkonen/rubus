@@ -28,6 +28,13 @@ FROM python:3.7.5-slim AS final
 COPY --from=builder /venv /venv
 ENV PATH="/venv/bin:$PATH"
 
+# Run the container in our local timezone for automatic DST.
+# /etc/localtime has to be removed as otherwise tzdata overwrites
+# /etc/timezone back to Etc/UTC for some reason
+RUN apt-get update -qq && apt-get install -qq tzdata && \
+    echo 'Europe/Helsinki' > /etc/timezone && rm /etc/localtime && \
+    dpkg-reconfigure -f noninteractive tzdata > /dev/null 2>&1
+
 # A non-root user cannot access files in a volume created with docker-compose
 # without the hack below (PermissionError: [Errno 13] Permission denied).
 # By creating the directory beforehand here the permissions will be inherited
