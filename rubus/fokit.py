@@ -130,7 +130,7 @@ def update_index():
 
     Index file format:
     [
-        {<latest>},
+        {oldest}
         ...
         {
             'date': "Maanantai, 2.1.2019",
@@ -138,7 +138,7 @@ def update_index():
             'url: "<url_to_comic_page>"
         },
         ...
-        {oldest}
+        {<latest>},
     ]
     """
     # Grab the current index to avoid creating duplicate entries and crawling unnecessary far
@@ -148,7 +148,7 @@ def update_index():
         with open(FILEPATH_INDEX, 'rb') as index_file:
             index = pickle.load(index_file)
 
-    latest_indexed = index[0] if index else None
+    latest_indexed = index[-1] if index else None
     # Crawl backwards from the latest available comic
     url_start_from = fetch_comic_url_latest()
     for url in _fetch_comic_url_all(url_start_from):
