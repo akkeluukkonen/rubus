@@ -7,7 +7,7 @@ import logging
 import os
 import pickle
 import random
-import time
+import urllib.parse
 
 import requests
 from bs4 import BeautifulSoup
@@ -22,7 +22,9 @@ logger = logging.getLogger('rubus')
 
 CONFIG = helper.config_load()
 FILEPATH_INDEX = os.path.join(CONFIG['filepaths']['storage'], "fokit_index.pkl")
-URL_BASE = "https://hs.fi"
+URL_SCHEME = "https"
+URL_HOST = "hs.fi"
+URL_BASE = f"{URL_SCHEME}://{URL_HOST}"
 URL_FOKIT = f"{URL_BASE}/nyt/fokit"
 NOON = datetime.time(12, 00)
 MONDAY_TO_FRIDAY = tuple(range(5))
@@ -65,11 +67,10 @@ def _fetch_comic_url_all(url_current):
     # Fake the first one to be of the same form
     uri_previous_part = {'href': url_current.lstrip(URL_BASE)}
     while uri_previous_part is not None:
-        url_current = f"{URL_BASE}/{uri_previous_part['href']}"
+        url_current = urllib.parse.urlunsplit(
+            (URL_SCHEME, URL_HOST, uri_previous_part['href'], "", "")
+        )
         yield url_current
-
-        # Avoid looking like an attacker
-        time.sleep(0.2)
 
         response = requests.get(url_current)
         soup = BeautifulSoup(response.content, 'html.parser')
