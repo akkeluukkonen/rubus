@@ -2,7 +2,6 @@ FROM python:3.7.5-slim as builder
 
 # Make sure that POETRY_VERSION is the same in pyproject.toml
 ENV POETRY_VERSION=1.0.0 \
-    PYTHONFAULTHANDLER=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=off
 
@@ -25,9 +24,6 @@ RUN poetry build --quiet && pip install --no-dependencies ./dist/rubus-*py3-none
 
 FROM python:3.7.5-slim AS final
 
-COPY --from=builder /venv /venv
-ENV PATH="/venv/bin:$PATH"
-
 # Run the container in our local timezone for automatic DST.
 # /etc/localtime has to be removed as otherwise tzdata overwrites
 # /etc/timezone back to Etc/UTC for some reason
@@ -42,4 +38,9 @@ RUN apt-get update -qq && apt-get install -qq tzdata && \
 # docker-compose runs.
 RUN useradd runner && mkdir /data && chown -R runner:runner /data
 USER runner
+
+COPY --from=builder /venv /venv
+ENV PATH="/venv/bin:$PATH" \
+    PYTHONFAULTHANDLER=1
+
 ENTRYPOINT [ "rubus", "--docker" ]
