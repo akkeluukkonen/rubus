@@ -150,17 +150,20 @@ def update_index():
 
     latest_indexed = index[-1] if index else None
     # Crawl backwards from the latest available comic
+    results = []
     url_start_from = fetch_comic_url_latest()
     for url in _fetch_comic_url_all(url_start_from):
         data = fetch_comic_information(url)
 
         if data == latest_indexed:
-            # We already had indexed this far!
+            logger.debug(f"Fok-It for date {data['date']} already indexed")
             break
 
         logger.debug(f"Fetched information for Fok-It of {data['date']}")
-        index.append(data)
+        results.append(data)
 
+    # Ensure order is correct so that the latest result is last
+    index.extend(results[::-1])
     with open(FILEPATH_INDEX, 'wb') as index_file:
         pickle.dump(index, index_file)
 
