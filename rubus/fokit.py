@@ -170,12 +170,18 @@ def update_index():
     return index
 
 
-def post_comic_latest(context):
+def post_comic_of_the_day(context):
     """Post the latest available comic
 
     Basically this will post the Fok-It of the day assuming you call it correctly on a weekday.
     """
     index = update_index()
+
+    _, image_latest_date = index[-1]['date'].split()
+    current_date = datetime.datetime.now().strftime(r"%d.%m.%Y")
+    if image_latest_date != current_date:
+        logger.debug("Current date did not match the latest comic!")
+        return
 
     image_latest_filepath = index[-1]['filepath']
     with open(image_latest_filepath, 'rb') as image_file:
@@ -205,7 +211,7 @@ def scheduling_enable(update, context):
     query = update.callback_query
     chat_id = query.message.chat['id']
 
-    context.job_queue.run_daily(post_comic_latest, NOON, MONDAY_TO_FRIDAY, context=chat_id)
+    context.job_queue.run_daily(post_comic_of_the_day, NOON, MONDAY_TO_FRIDAY, context=chat_id)
 
     query.message.edit_text("Scheduled Fok-It posting enabled at noon on weekdays")
     return ConversationHandler.END
@@ -260,7 +266,7 @@ def init(dispatcher):
     for chat_id in chat_data:
         # Create the job even for chats not using the feature as it is easier to simply
         # enable / disable the job per chat instead of creating and destroying it repeatedly
-        job = job_queue.run_daily(post_comic_latest, NOON, MONDAY_TO_FRIDAY, context=chat_id)
+        job = job_queue.run_daily(post_comic_of_the_day, NOON, MONDAY_TO_FRIDAY, context=chat_id)
         job.enabled = chat_data[chat_id].get('fokit-scheduled', False)
 
     logger.info("Updating index for Fok-It comics")
