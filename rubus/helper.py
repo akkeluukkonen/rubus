@@ -19,6 +19,16 @@ def config_load():
     return data
 
 
+def cancel(update, context):  # pylint: disable=unused-argument
+    """Handler for canceling current operation in ConversationHandler
+
+    Automatically ends the conversation.
+    """
+    query = update.callback_query
+    query.message.edit_text("Canceled")
+    return ConversationHandler.END
+
+
 def confused(update, context):  # pylint: disable=unused-argument
     """Handler for unkown states in ConversationHandler
 

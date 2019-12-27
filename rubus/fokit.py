@@ -230,13 +230,6 @@ def scheduling_disable(update, context):
     return ConversationHandler.END
 
 
-def cancel(update, context):  # pylint: disable=unused-argument
-    """Don't make any changes"""
-    query = update.callback_query
-    query.message.edit_text("Canceled")
-    return ConversationHandler.END
-
-
 def start(update, context):
     """Present the user all available fokit configuration options"""
     if 'fokit-scheduled' not in context.chat_data:
@@ -280,7 +273,7 @@ handler_conversation = ConversationHandler(
             CallbackQueryHandler(post_random, pattern=f"^{Command.POST_RANDOM}$"),
             CallbackQueryHandler(scheduling_disable, pattern=f"^{Command.SCHEDULING_DISABLE}$"),
             CallbackQueryHandler(scheduling_enable, pattern=f"^{Command.SCHEDULING_ENABLE}$"),
-            CallbackQueryHandler(cancel, pattern=f"^{Command.CANCEL}$"),
+            CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
             ],
     },
     fallbacks=[MessageHandler(Filters.all, helper.confused)]
