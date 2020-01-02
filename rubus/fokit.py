@@ -177,10 +177,11 @@ def post_comic_of_the_day(context):
     """
     index = update_index()
 
-    _, image_latest_date = index[-1]['date'].split()
-    current_date = datetime.datetime.now().strftime(r"%d.%m.%Y")
-    if image_latest_date != current_date:
-        logger.debug("Current date did not match the latest comic!")
+    # TODO: Fix the date system more elegantly
+    _, image_latest_date_str = index[-1]['date'].split()
+    image_latest_date = datetime.datetime.strptime(image_latest_date_str, r"%d.%m.%Y").date()
+    if image_latest_date != datetime.date.today():
+        logger.debug("Latest comic was not of today!")
         return
 
     image_latest_filepath = index[-1]['filepath']
