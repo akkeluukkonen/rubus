@@ -21,11 +21,12 @@ from rubus import helper
 logger = logging.getLogger('rubus')
 
 CONFIG = helper.config_load()
-FILEPATH_INDEX = os.path.join(CONFIG['filepaths']['storage'], "fokit_index.pkl")
+FILEPATH_INDEX = os.path.join(CONFIG['filepaths']['storage'], "fokit_index.pkl")  # TODO: Remove specific
 URL_SCHEME = "https"
 URL_HOST = "hs.fi"
 URL_BASE = f"{URL_SCHEME}://{URL_HOST}"
-URL_FOKIT = f"{URL_BASE}/nyt/fokit"
+URL_COMICS = f"{URL_BASE}/sarjakuvat/"
+URL_FOKIT = f"{URL_BASE}/nyt/fokit"  # TODO: Remove specific
 NOON = datetime.time(12, 00)
 MONDAY_TO_FRIDAY = tuple(range(5))
 
@@ -108,6 +109,7 @@ def fetch_comic_information(url):
     image_data = response.content
 
     image_filename = os.path.basename(image_url.split('/')[-1])
+    # TODO: Need to include name of specific comic into the storage path!
     image_filepath = os.path.join(CONFIG['filepaths']['storage'], image_filename)
     with open(image_filepath, 'wb') as image_file:
         image_file.write(image_data)
@@ -121,7 +123,7 @@ def fetch_comic_information(url):
 
 
 def update_index():
-    """Fetch all of the images for the Fok-It comics
+    """Fetch all of the images for the Fok-It comics # TODO: Remove specifics
 
     Data will be saved in a pickled file to the given download directory as a pickled index file,
     and as separate image files.
@@ -154,9 +156,11 @@ def update_index():
         data = fetch_comic_information(url)
 
         if data == latest_indexed:
+            # TODO: Remove specifics
             logger.debug(f"Fok-It for date {data['date']} already indexed")
             break
 
+        # TODO: Remove specifics
         logger.debug(f"Fetched information for Fok-It of {data['date']}")
         results.append(data)
 
@@ -171,6 +175,7 @@ def update_index():
 def post_comic_of_the_day(context):
     """Post the latest available comic
 
+    # TODO: Remove specifics
     Basically this will post the Fok-It of the day assuming you call it correctly on a weekday.
     """
     index = update_index()
@@ -189,7 +194,7 @@ def post_comic_of_the_day(context):
 
 
 def post_random(update, context):
-    """Post a random Fok-It"""
+    """Post a random Fok-It""" # TODO: Remove specifics
     with open(FILEPATH_INDEX, 'rb') as index_file:
         index = pickle.load(index_file)
 
@@ -199,6 +204,7 @@ def post_random(update, context):
         chat_id = query.message.chat['id']
         context.bot.send_photo(chat_id, image_file)
 
+    # TODO: Remove specifics
     query.message.edit_text(f"Fok-It of {image_random['date']}")
 
     return ConversationHandler.END
@@ -206,18 +212,21 @@ def post_random(update, context):
 
 def scheduling_enable(update, context):
     """Enable scheduled posting of the comic strips"""
+    # TODO: Remove specifics
     context.chat_data['fokit-scheduled'] = True
     query = update.callback_query
     chat_id = query.message.chat['id']
 
     context.job_queue.run_daily(post_comic_of_the_day, NOON, MONDAY_TO_FRIDAY, context=chat_id)
 
+    # TODO: Remove specifics
     query.message.edit_text("Scheduled Fok-It posting enabled at noon on weekdays")
     return ConversationHandler.END
 
 
 def scheduling_disable(update, context):
     """Disable scheduled posting of the comic strips"""
+    # TODO: Remove specifics
     context.chat_data['fokit-scheduled'] = False
     query = update.callback_query
     chat_id = query.message.chat['id']
@@ -225,12 +234,14 @@ def scheduling_disable(update, context):
     job = next(job for job in context.job_queue.jobs() if job.context == chat_id)
     job.schedule_removal()
 
+    # TODO: Remove specifics
     query.message.edit_text("Scheduled Fok-It posting disabled")
     return ConversationHandler.END
 
 
 def start(update, context):
     """Present the user all available fokit configuration options"""
+    # TODO: Rework to be more generalized
     if 'fokit-scheduled' not in context.chat_data:
         context.chat_data['fokit-scheduled'] = False
 
@@ -253,6 +264,7 @@ def start(update, context):
 
 def init(dispatcher):
     """At bot startup this function should be executed to initialize the jobs correctly"""
+    # TODO: Rework to be more generalized
     job_queue = dispatcher.job_queue
     chat_data = dispatcher.chat_data
     for chat_id in chat_data:
@@ -266,7 +278,7 @@ def init(dispatcher):
 
 
 handler_conversation = ConversationHandler(
-    entry_points=[CommandHandler('fokit', start)],
+    entry_points=[CommandHandler('fokit', start)], # TODO: Remove specifics
     states={
         State.MENU: [
             CallbackQueryHandler(post_random, pattern=f"^{Command.POST_RANDOM}$"),
