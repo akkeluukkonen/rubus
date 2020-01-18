@@ -50,15 +50,13 @@ class Command(enum.IntEnum):
     CANCEL = enum.auto()
 
 
-def fetch_comic_url_latest():
-    """Fetch URL of the latest comic on its individual page"""
-    response = requests.get(URL_FOKIT)
+def fetch_comic_url_latest(url_comic):
+    """Fetch URL of the latest comic from its individual page"""
+    response = requests.get(url_comic)
     soup = BeautifulSoup(response.content, 'html.parser')
-    figure_elements = soup.find_all('figure')
-    # Latest comic should be first available figure element
-    figure_element_first = figure_elements[0]
+    latest_comic = soup.find('figure')
     # Grab the link for the individual page of the comic as we can start crawling from that
-    comic_uri_part = figure_element_first.find('meta', {'itemprop': 'contentUrl'})['content']
+    comic_uri_part = latest_comic.find('meta', {'itemprop': 'contentUrl'})['content']
     comic_url = f"{URL_BASE}{comic_uri_part}"
     return comic_url
 
@@ -151,7 +149,7 @@ def update_index():
     latest_indexed = index[-1] if index else None
     # Crawl backwards from the latest available comic
     results = []
-    url_start_from = fetch_comic_url_latest()
+    url_start_from = fetch_comic_url_latest(URL_FOKIT)  # TODO: Remove specifics
     for url in _fetch_comic_url_all(url_start_from):
         data = fetch_comic_information(url)
 
