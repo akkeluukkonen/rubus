@@ -77,27 +77,34 @@ def _fetch_comic_url_all(url_current):
         uri_previous_part = soup.find('a', {'class': 'article-navlink prev'})
 
 
-def fetch_comic_information(url):
-    """Fetch all relevant information related to a comic
+def _download_comic_image(image_url):
+    response = requests.get(image_url)
+    image_data = response.content
+    # Save the image locally with the same filename as the host server is using.
+    image_filename = os.path.basename(image_url.split('/')[-1])
+    image_filepath = os.path.join(CONFIG['filepaths']['storage'], image_filename)
+    with open(image_filepath, 'wb') as image_file:
+        image_file.write(image_data)
+    return image_filepath
 
-    Simultaneously save the image file to our dedicated storage location using the same
-    filename as the host server is using. This filepath is stored in the returned dict.
 
-    :return: Dictionary of format
-        {
-            'date': "Maanantai, 2.1.2019",
-            'filepath': "download_filepath/<image_identifier>.jpg},
-            'url: "url"
-        }
+def download_comic(url):
+    """Download the comic from a given URL
+
+    Returns a dictionary with the relevant data.
     """
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    date = soup.find('span', {'class': 'date'}).text
-    # Comics released in current year don't include the year explicitly
-    if date.endswith('.'):
-        current_year = datetime.datetime.today().year
-        date += str(current_year)
+    date_text_with_weekday = soup.find('span', {'class': 'date'}).text
+    date_text = date_text_with_weekday.split(' ')[-1]
+    try:
+        date = datetime.datetime.strptime(date_text, r"%d.%m.%Y").date()
+    except ValueError:
+        # Comics released in the current year don't include the year explicitly in the text
+        date = datetime.datetime.strptime(date_text, r"%d.%m.").date()
+        today = datetime.datetime.now().date()
+        date.replace(year=today.year)
 
     image_element = soup.find('img')
     # The element includes a low-res and high-res partial URI but we want only the high-res one,
@@ -105,19 +112,11 @@ def fetch_comic_information(url):
     image_uri = image_element['data-srcset'].rstrip(" 1920w")
     # image_uri is of format '//hs.mediadelivery.fi/...'
     image_url = f"https:{image_uri}"
-    response = requests.get(image_url)
-    image_data = response.content
-
-    image_filename = os.path.basename(image_url.split('/')[-1])
-    # TODO: Need to include name of specific comic into the storage path!
-    image_filepath = os.path.join(CONFIG['filepaths']['storage'], image_filename)
-    with open(image_filepath, 'wb') as image_file:
-        image_file.write(image_data)
+    image_filepath = _download_comic_image(image_url)
 
     data = {
         'date': date,
         'filepath': image_filepath,
-        'url': url
     }
     return data
 
@@ -169,7 +168,7 @@ def update_index():
     results = []
     url_start_from = fetch_comic_url_latest(URL_FOKIT)  # TODO: Remove specifics
     for url in _fetch_comic_url_all(url_start_from):
-        data = fetch_comic_information(url)
+        data = download_comic(url)
 
         if data == latest_indexed:
             # TODO: Remove specifics
