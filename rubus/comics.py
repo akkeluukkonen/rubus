@@ -122,6 +122,22 @@ def fetch_comic_information(url):
     return data
 
 
+def fetch_comics_available():
+    """Fetch all available comics from the frontpage at URL_COMICS"""
+    response = requests.get(URL_COMICS)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    comic_data = []
+    comic_contents = soup.find_all('div', {'class': 'cartoon-content'})
+    for content in comic_contents:
+        title = content.find('span', {'class': 'title'}).get_text()
+        uri_part = content.find('meta', {'itemprop': 'contentUrl'})['content']
+        url = f"{URL_BASE}{uri_part}"
+        comic_data.append({'title': title, 'url': url})
+
+    return comic_data
+
+
 def update_index():
     """Fetch all of the images for the Fok-It comics # TODO: Remove specifics
 
