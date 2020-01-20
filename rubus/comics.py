@@ -143,9 +143,13 @@ def _update_index_of_comic(comic):
     cursor = conn.cursor()
 
     comic_latest_stored_date_str = cursor.execute(
-        "SELECT date FROM images WHERE name = ? ORDER BY date DESC", comic['name']).fetchone()[0]
+        "SELECT date FROM images WHERE name = ? ORDER BY date DESC", (comic['name'],)).fetchone()
+    if comic_latest_stored_date_str is not None:
+        # SQLite annoyingly returns even single values in a tuple...
+        comic_latest_stored_date_str = comic_latest_stored_date_str[0]
+
     comic_homepage_url = cursor.execute(
-        "SELECT url FROM sources WHERE name = ?", comic['name']).fetchone()[0]
+        "SELECT url FROM sources WHERE name = ?", (comic['name'],)).fetchone()[0]
 
     url_start_from = fetch_comic_url_latest(comic_homepage_url)
     for url in _fetch_comic_url_all(url_start_from):
@@ -159,7 +163,7 @@ def _update_index_of_comic(comic):
         logger.debug(f"Fetched information for {comic['name']} of {date_str}")
         cursor.execute(
             "INSERT INTO images (name, date, filepath) values (?, ?, ?)",
-            comic['name'], date_str, comic['filepath'])
+            (comic['name'], date_str, data['filepath']))
 
     conn.commit()
 
