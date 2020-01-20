@@ -65,8 +65,8 @@ def fetch_comic_url_latest(comic_url_homepage):
 
 
 def _fetch_comic_url_all(url_current):
-    # Fake the first one to be of the same form
-    uri_previous_part = {'href': url_current.lstrip(URL_BASE)}
+    # Fake the first one to be of the same form without the base part
+    uri_previous_part = {'href': url_current[len(URL_BASE):]}
     while uri_previous_part is not None:
         url_current = urllib.parse.urlunsplit(
             (URL_SCHEME, URL_HOST, uri_previous_part['href'], "", "")
