@@ -8,7 +8,6 @@ import os
 import pickle
 import random
 import sqlite3
-import string
 import urllib.parse
 
 import requests
@@ -27,7 +26,6 @@ URL_SCHEME = "https"
 URL_HOST = "hs.fi"
 URL_BASE = f"{URL_SCHEME}://{URL_HOST}"
 URL_COMICS = f"{URL_BASE}/sarjakuvat/"
-URL_FOKIT = f"{URL_BASE}/nyt/fokit"  # TODO: Remove specific
 NOON = datetime.time(12, 00)
 MONDAY_TO_FRIDAY = tuple(range(5))
 
