@@ -9,6 +9,7 @@ import telegram.ext
 from telegram.ext import ConversationHandler
 from telegram.ext import CommandHandler, MessageHandler, Filters
 
+from rubus import comics
 from rubus import helper
 from rubus import stickers
 
@@ -72,7 +73,7 @@ def main():
     handler_conversation = telegram.ext.ConversationHandler(
         entry_points=[
             CommandHandler('start', start),
-            fokit.handler_conversation,
+            comics.handler_conversation,
             stickers.handler_conversation,
             ],
         states={
@@ -85,7 +86,7 @@ def main():
     dispatcher.add_handler(handler_conversation)
 
     logger.debug("Bot ready, initializing submodules")
-    fokit.init(dispatcher)
+    comics.init(dispatcher)
 
     logger.info("Init done. Starting...")
     updater.start_polling(poll_interval=0.1)
