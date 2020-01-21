@@ -10,7 +10,6 @@ from telegram.ext import ConversationHandler
 from telegram.ext import CommandHandler, MessageHandler, Filters
 
 from rubus import helper
-from rubus import fokit
 from rubus import stickers
 
 
