@@ -205,24 +205,41 @@ def update_index():
 
 
 def post_comic_of_the_day(context):
-    """Post the latest available comic
+    """Post the latest available comic if one is available
 
-    # TODO: Remove specifics
-    Basically this will post the Fok-It of the day assuming you call it correctly on a weekday.
+    Automatically go through all registered chats and stored comics.
     """
-    index = update_index()
+    cursor = conn.cursor()
+    comics = cursor.execute("SELECT name FROM sources").fetchall()
 
-    # TODO: Fix the date system more elegantly
-    _, image_latest_date_str = index[-1]['date'].split()
-    image_latest_date = datetime.datetime.strptime(image_latest_date_str, r"%d.%m.%Y").date()
-    if image_latest_date != datetime.date.today():
-        logger.debug("Latest comic was not of today!")
-        return
+    for name in comics:
+        date_str, filepath, file_id = cursor.execute(
+            "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY date DESC LIMIT 1",
+            (name,)).fetchone()
 
-    image_latest_filepath = index[-1]['filepath']
-    with open(image_latest_filepath, 'rb') as image_file:
-        chat_id = context.job.context
-        context.bot.send_photo(chat_id, image_file, "Fok-It of the day")
+        today_str = datetime.date.today().strftime(r"%Y-%m-%d")
+        if date_str != today_str:
+            logger.debug("Latest comic was not of today!")
+            continue
+
+        chat_ids = cursor.execute(
+            "SELECT chat_id FROM daily_posts WHERE name = ?", (name,)).fetchall()
+        for chat_id in chat_ids:
+            if file_id is not None:
+                context.bot.send_photo(chat_id, file_id, f"{name} of the day")
+                continue
+
+            with open(filepath, 'rb') as image:
+                message = context.bot.send_photo(chat_id, image, f"{name} of the day")
+
+            # TODO: Get the maximum size of the photo and update the file_id to the database
+            logger.debug(f"Photos in message: {message.photo}")
+            continue
+            # file_id = message.photo...  # Need to find the largest from photo
+            cursor.execute(
+                "UPDATE images SET file_id = ? WHERE filepath = ?", (file_id, filepath))
+
+    conn.commit()
 
 
 def post_random(update, context):
