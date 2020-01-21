@@ -179,6 +179,10 @@ def _create_database_tables(comics_available):
         "CREATE TABLE IF NOT EXISTS images "
         "(name TEXT, date DATE, filepath TEXT NOT NULL, file_id TEXT, UNIQUE(name, date))")
 
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS daily_posts "
+        "(chat_id INTEGER, name TEXT, UNIQUE(chat_id, name))")
+
     conn.commit()
 
 
@@ -236,32 +240,31 @@ def post_random(update, context):
     return ConversationHandler.END
 
 
-def scheduling_enable(update, context):
+def scheduling_enable(update, context):  # pylint: disable=unused-argument
     """Enable scheduled posting of the comic strips"""
-    # TODO: Remove specifics
-    context.chat_data['fokit-scheduled'] = True
     query = update.callback_query
     chat_id = query.message.chat['id']
+    name = query.data
 
-    context.job_queue.run_daily(post_comic_of_the_day, NOON, MONDAY_TO_FRIDAY, context=chat_id)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO daily_posts values (?, ?)", (chat_id, name))
+    conn.commit()
+    query.message.edit_text(f"Scheduled {name} posting enabled at noon")
 
-    # TODO: Remove specifics
-    query.message.edit_text("Scheduled Fok-It posting enabled at noon on weekdays")
     return ConversationHandler.END
 
 
 def scheduling_disable(update, context):
     """Disable scheduled posting of the comic strips"""
-    # TODO: Remove specifics
-    context.chat_data['fokit-scheduled'] = False
     query = update.callback_query
     chat_id = query.message.chat['id']
+    name = query.data
 
-    job = next(job for job in context.job_queue.jobs() if job.context == chat_id)
-    job.schedule_removal()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM daily_posts WHERE chat_id = ? AND name = ?", (chat_id, name))
+    conn.commit()
+    query.message.edit_text(f"Scheduled {name} posting disabled")
 
-    # TODO: Remove specifics
-    query.message.edit_text("Scheduled Fok-It posting disabled")
     return ConversationHandler.END
 
 
