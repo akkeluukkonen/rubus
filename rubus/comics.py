@@ -242,6 +242,12 @@ def post_random(update, context):
     return ConversationHandler.END
 
 
+def _is_comic_scheduled(chat_id, name):
+    cursor = conn.cursor()
+    row = cursor.execute("SELECT 1 FROM daily_posts WHERE chat_id = ? AND name = ?", (chat_id, name)).fetchone()
+    return row is not None
+
+
 def schedule_menu(update, context):  # pylint: disable=unused-argument
     """Present the user the scheduling options"""
     chat_id = update.message.chat_id
@@ -251,12 +257,12 @@ def schedule_menu(update, context):  # pylint: disable=unused-argument
     buttons = []
     for name in comics:
         # TODO: What callback?
-        if cursor.execute("SELECT 1 FROM daily_posts WHERE chat_id = ? AND name = ?", (chat_id, name)).fetchone():
+        if _is_comic_scheduled(chat_id, name):
             buttons.append(
-                [InlineKeyboardButton(f"Stop posting {name} daily at noon", callback_data=Command.SCHEDULE)])
+                [InlineKeyboardButton(f"Stop posting {name} daily at noon", callback_data=name)])
         else:
             buttons.append(
-                [InlineKeyboardButton(f"Start posting {name} daily at noon", callback_data=Command.SCHEDULE)])
+                [InlineKeyboardButton(f"Start posting {name} daily at noon", callback_data=name)])
 
     keyboard = [
         *buttons,
@@ -267,32 +273,33 @@ def schedule_menu(update, context):  # pylint: disable=unused-argument
     return State.SCHEDULE
 
 
-def scheduling_enable(update, context):  # pylint: disable=unused-argument
-    """Enable scheduled posting of the comic strips"""
+def schedule(update, context):  # pylint: disable=unused-argument
+    """Change the schedule of a comic"""
+    chat_id = update.message.chat_id
     query = update.callback_query
-    chat_id = query.message.chat['id']
     name = query.data
 
+    if _is_comic_scheduled(chat_id, name):
+        scheduling_disable(chat_id, name)
+        query.message.edit_text(f"Scheduled {name} posting disabled")
+    else:
+        scheduling_enable(chat_id, name)
+        query.message.edit_text(f"Scheduled {name} posting enabled at noon")
+
+    return ConversationHandler.END
+
+def scheduling_enable(chat_id, name):
+    """Enable scheduled posting of a comic for a chat"""
     cursor = conn.cursor()
     cursor.execute("INSERT INTO daily_posts values (?, ?)", (chat_id, name))
     conn.commit()
-    query.message.edit_text(f"Scheduled {name} posting enabled at noon")
-
-    return ConversationHandler.END
 
 
-def scheduling_disable(update, context):  # pylint: disable=unused-argument
-    """Disable scheduled posting of the comic strips"""
-    query = update.callback_query
-    chat_id = query.message.chat['id']
-    name = query.data
-
+def scheduling_disable(chat_id, name):
+    """Disable scheduled posting of a comic for a chat"""
     cursor = conn.cursor()
     cursor.execute("DELETE FROM daily_posts WHERE chat_id = ? AND name = ?", (chat_id, name))
     conn.commit()
-    query.message.edit_text(f"Scheduled {name} posting disabled")
-
-    return ConversationHandler.END
 
 
 def start(update, context):  # pylint: disable=unused-argument
