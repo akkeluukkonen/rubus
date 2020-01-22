@@ -38,7 +38,6 @@ class State(enum.IntEnum):
     The performed actions may depend on the message content.
     """
     MENU = enum.auto()
-    SCHEDULE_MENU = enum.auto()
     SCHEDULE = enum.auto()
 
 
@@ -49,7 +48,6 @@ class Command(enum.IntEnum):
     """
     POST_RANDOM = enum.auto()
     SCHEDULE_MENU = enum.auto()
-    SCHEDULE = enum.auto()
     CANCEL = enum.auto()
 
 
@@ -321,7 +319,7 @@ def start(update, context):  # pylint: disable=unused-argument
     """Present the user all available options"""
     keyboard = [
         [InlineKeyboardButton("Post a random comic", callback_data=Command.POST_RANDOM)],
-        [InlineKeyboardButton("Change the schedule of a daily comic", callback_data=Command.SCHEDULE)],
+        [InlineKeyboardButton("Change the schedule of a daily comic", callback_data=Command.SCHEDULE_MENU)],
         [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -344,10 +342,6 @@ handler_conversation = ConversationHandler(
         State.MENU: [
             CallbackQueryHandler(post_random, pattern=f"^{Command.POST_RANDOM}$"),
             CallbackQueryHandler(schedule_menu, pattern=f"^{Command.SCHEDULE_MENU}$"),
-            CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
-            ],
-        State.SCHEDULE_MENU: [
-            CallbackQueryHandler(schedule, pattern=f"^{Command.SCHEDULE}$"),
             CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
             ],
         State.SCHEDULE: [
