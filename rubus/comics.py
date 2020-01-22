@@ -39,6 +39,7 @@ class State(enum.IntEnum):
     """
     MENU = enum.auto()
     SCHEDULE = enum.auto()
+    RANDOM = enum.auto()
 
 
 class Command(enum.IntEnum):
@@ -46,8 +47,8 @@ class Command(enum.IntEnum):
 
     Can be directly used as a value for the CallbackQueryHandler from the InlineKeyboard.
     """
-    POST_RANDOM = enum.auto()
     SCHEDULE_MENU = enum.auto()
+    RANDOM_MENU = enum.auto()
     CANCEL = enum.auto()
 
 
@@ -238,19 +239,39 @@ def post_comic_of_the_day(context):
     conn.commit()
 
 
-def post_random(update, context):
-    """Post a random Fok-It""" # TODO: Remove specifics
-    with open(FILEPATH_INDEX, 'rb') as index_file:
-        index = pickle.load(index_file)
+def random_menu(update, context):  # pylint: disable=unused-argument
+    """Present the user the comic options"""
+    cursor = conn.cursor()
+    comics = cursor.execute("SELECT name FROM sources").fetchall()
 
+    buttons = [[InlineKeyboardButton(f"{name}", callback_data=name)] for name in comics]
+
+    keyboard = [
+        *buttons,
+        [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text("Select option:", reply_markup=reply_markup)
+    return State.RANDOM
+
+
+def random_post(update, context):
+    """Post a random comic"""
     query = update.callback_query
-    image_random = random.choice(index)
-    with open(image_random['filepath'], 'rb') as image_file:
-        chat_id = query.message.chat['id']
-        context.bot.send_photo(chat_id, image_file)
+    name = query.data
 
-    # TODO: Remove specifics
-    query.message.edit_text(f"Fok-It of {image_random['date']}")
+    cursor = conn.cursor()
+    date, filepath, file_id = cursor.execute(
+        "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY RANDOM() LIMIT 1", (name,)).fetchone()
+
+    query.message.edit_text(f"{name} of {date}")
+    chat_id = query.message.chat['id']
+
+    if file_id is not None:
+        context.bot.send_photo(chat_id, file_id)
+    else:
+        with open(filepath, 'rb') as image:
+            context.bot.send_photo(chat_id, image)
 
     return ConversationHandler.END
 
@@ -318,7 +339,7 @@ def scheduling_disable(chat_id, name):
 def start(update, context):  # pylint: disable=unused-argument
     """Present the user all available options"""
     keyboard = [
-        [InlineKeyboardButton("Post a random comic", callback_data=Command.POST_RANDOM)],
+        [InlineKeyboardButton("Post a random comic", callback_data=Command.RANDOM_MENU)],
         [InlineKeyboardButton("Change the schedule of a daily comic", callback_data=Command.SCHEDULE_MENU)],
         [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
     ]
@@ -340,7 +361,7 @@ handler_conversation = ConversationHandler(
     entry_points=[CommandHandler('fokit', start)], # TODO: Remove specifics
     states={
         State.MENU: [
-            CallbackQueryHandler(post_random, pattern=f"^{Command.POST_RANDOM}$"),
+            CallbackQueryHandler(random_menu, pattern=f"^{Command.RANDOM_MENU}$"),
             CallbackQueryHandler(schedule_menu, pattern=f"^{Command.SCHEDULE_MENU}$"),
             CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
             ],
@@ -348,6 +369,10 @@ handler_conversation = ConversationHandler(
             CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
             CallbackQueryHandler(schedule),
             ],
+        State.RANDOM: [
+            CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
+            CallbackQueryHandler(random_post),
+        ]
     },
     fallbacks=[MessageHandler(Filters.all, helper.confused)]
 )
