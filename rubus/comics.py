@@ -284,7 +284,7 @@ def _is_comic_scheduled(chat_id, name):
 
 def schedule_menu(update, context):  # pylint: disable=unused-argument
     """Present the user the scheduling options"""
-    chat_id = update.message.chat_id
+    chat_id = update.callback_query.message.chat_id
     cursor = conn.cursor()
     comics = cursor.execute("SELECT name FROM sources").fetchall()
 
