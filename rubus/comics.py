@@ -358,7 +358,7 @@ def init(dispatcher):
 
 
 handler_conversation = ConversationHandler(
-    entry_points=[CommandHandler('fokit', start)], # TODO: Remove specifics
+    entry_points=[CommandHandler('comics', start)],
     states={
         State.MENU: [
             CallbackQueryHandler(random_menu, pattern=f"^{Command.RANDOM_MENU}$"),
