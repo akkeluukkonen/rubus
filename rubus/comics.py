@@ -179,7 +179,7 @@ def _create_database_tables(comics_available):
 
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS images "
-        "(name TEXT, date DATE, filepath TEXT NOT NULL, file_id TEXT, UNIQUE(name, date))")
+        "(name TEXT, date DATE, filepath TEXT NOT NULL, file_id TEXT)")
 
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS daily_posts "
