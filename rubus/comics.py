@@ -283,7 +283,8 @@ def random_menu(update, context):  # pylint: disable=unused-argument
         [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text("Select option:", reply_markup=reply_markup)
+    query = update.callback_query
+    query.message.edit_text("Select option:", reply_markup=reply_markup)
     return State.RANDOM
 
 
@@ -332,7 +333,8 @@ def schedule_menu(update, context):  # pylint: disable=unused-argument
         [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text("Select option:", reply_markup=reply_markup)
+    query = update.callback_query
+    query.message.edit_text("Select option:", reply_markup=reply_markup)
     return State.SCHEDULE
 
 
