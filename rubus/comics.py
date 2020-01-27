@@ -52,7 +52,7 @@ def database_worker():
         try:
             rows = cursor.execute(query.statement, query.args).fetchall()
             results.put(Result(query.statement, query.args, rows))
-        except sqlite3.OperationalError:
+        except (sqlite3.OperationalError, sqlite3.ProgrammingError):
             logger.exception("SQLite exception during transaction!")
             results.put(None)
 
