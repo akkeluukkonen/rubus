@@ -73,7 +73,7 @@ def database_query_single(statement, *args):
     The caller is responsible of expecting what format is returned.
     """
     rows = database_query(statement, *args)
-    if rows is None:
+    if not rows:
         return None
 
     # Even if only one row is returned, it will be in a list per the SQLite interface
