@@ -197,9 +197,9 @@ def fetch_comics_available():
 
 def _update_index_of_comic(comic):
     comic_latest_stored_date_str = database_query_single(
-        "SELECT date FROM images WHERE name = ? ORDER BY date DESC", (comic['name'],))
+        "SELECT date FROM images WHERE name = ? ORDER BY date DESC", comic['name'])
     comic_homepage_url = database_query_single(
-        "SELECT url FROM sources WHERE name = ?", (comic['name'],))
+        "SELECT url FROM sources WHERE name = ?", comic['name'])
 
     url_start_from = fetch_comic_url_latest(comic_homepage_url)
     for url in _fetch_comic_url_all(url_start_from):
@@ -213,7 +213,7 @@ def _update_index_of_comic(comic):
         logger.debug(f"Fetched information for {comic['name']} of {date_str}")
         database_query(
             "INSERT INTO images (name, date, filepath) values (?, ?, ?)",
-            (comic['name'], date_str, data['filepath']))
+            comic['name'], date_str, data['filepath'])
 
 
 def _create_database_tables():
@@ -236,7 +236,7 @@ def update_index():
     comics_available = fetch_comics_available()
     for comic in comics_available:
         database_query(
-            "INSERT OR REPLACE INTO sources (name, url) values (?, ?)", (comic['name'], comic['url']))
+            "INSERT OR REPLACE INTO sources (name, url) values (?, ?)", comic['name'], comic['url'])
         _update_index_of_comic(comic)
 
     logger.info("Database updated")
@@ -253,8 +253,7 @@ def post_comic_of_the_day(context):
 
     for name in comics:
         date_str, filepath, file_id = database_query_single(
-            "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY date DESC LIMIT 1",
-            (name,))
+            "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY date DESC LIMIT 1", name)
 
         today_str = datetime.date.today().strftime(r"%Y-%m-%d")
         if date_str != today_str:
@@ -262,7 +261,7 @@ def post_comic_of_the_day(context):
             continue
 
         chat_ids = database_query(
-            "SELECT chat_id FROM daily_posts WHERE name = ?", (name,))
+            "SELECT chat_id FROM daily_posts WHERE name = ?", name)
         for chat_id in chat_ids:
             if file_id is not None:
                 context.bot.send_photo(chat_id, file_id, f"{name} of the day")
@@ -276,7 +275,7 @@ def post_comic_of_the_day(context):
             continue
             # file_id = message.photo...  # Need to find the largest from photo
             database_query(
-                "UPDATE images SET file_id = ? WHERE filepath = ?", (file_id, filepath))
+                "UPDATE images SET file_id = ? WHERE filepath = ?", file_id, filepath)
 
 
 def random_menu(update, context):  # pylint: disable=unused-argument
@@ -298,7 +297,7 @@ def random_post(update, context):
     name = query.data
 
     date, filepath, file_id = database_query_single(
-        "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY RANDOM() LIMIT 1", (name,))
+        "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY RANDOM() LIMIT 1", name)
 
     query.message.edit_text(f"{name} of {date}")
     chat_id = query.message.chat['id']
@@ -313,7 +312,7 @@ def random_post(update, context):
 
 
 def _is_comic_scheduled(chat_id, name):
-    row = database_query_single("SELECT 1 FROM daily_posts WHERE chat_id = ? AND name = ?", (chat_id, name))
+    row = database_query_single("SELECT 1 FROM daily_posts WHERE chat_id = ? AND name = ?", chat_id, name)
     return row is not None
 
 
@@ -358,12 +357,12 @@ def schedule(update, context):  # pylint: disable=unused-argument
 
 def scheduling_enable(chat_id, name):
     """Enable scheduled posting of a comic for a chat"""
-    database_query("INSERT INTO daily_posts values (?, ?)", (chat_id, name))
+    database_query("INSERT INTO daily_posts values (?, ?)", chat_id, name)
 
 
 def scheduling_disable(chat_id, name):
     """Disable scheduled posting of a comic for a chat"""
-    database_query("DELETE FROM daily_posts WHERE chat_id = ? AND name = ?", (chat_id, name))
+    database_query("DELETE FROM daily_posts WHERE chat_id = ? AND name = ?", chat_id, name)
 
 
 def start(update, context):  # pylint: disable=unused-argument
