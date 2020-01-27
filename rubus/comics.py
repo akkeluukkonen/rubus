@@ -58,15 +58,11 @@ def database_worker():
 
 def database_query(statement, *args):
     """Request a query from the database"""
-    query = Query(statement, args)
-    logger.debug(f"Requesting query: {query}")
-    queries.put(query)
-
+    queries.put(Query(statement, args))
+    # Block while waiting for the results...
     result = results.get()
     if result is None:
         raise RuntimeError("Error in transaction!")
-
-    logger.debug(f"Received result: {result}")
     return result.rows
 
 
