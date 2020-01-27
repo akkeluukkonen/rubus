@@ -41,13 +41,20 @@ results = queue.Queue()
 
 def database_worker():
     """All database queries should be submitted through this worker"""
-    conn = sqlite3.connect(DATABASE_FILEPATH)
+    logger.debug(f"Connecting to {DATABASE_FILEPATH}")
+    # Set isolation_level=None for autocommit mode as we are running the
+    # database through a single thread, thus making db management easier.
+    conn = sqlite3.connect(DATABASE_FILEPATH, isolation_level=None)
     cursor = conn.cursor()
     while True:
         query = queries.get()
-        rows = cursor.execute(query.statement, *query.args).fetchall()
-        results.put(Result(query.statement, query.args, rows))
 
+        try:
+            rows = cursor.execute(query.statement, query.args).fetchall()
+            results.put(Result(query.statement, query.args, rows))
+        except sqlite3.OperationalError:
+            logger.exception("SQLite exception during transaction!")
+            results.put(None)
 
 def database_query(statement, *args):
     """Request a query from the database"""
