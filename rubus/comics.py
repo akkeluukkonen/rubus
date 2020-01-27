@@ -196,16 +196,10 @@ def fetch_comics_available():
 
 
 def _update_index_of_comic(comic):
-    cursor = conn.cursor()
-
-    comic_latest_stored_date_str = cursor.execute(
-        "SELECT date FROM images WHERE name = ? ORDER BY date DESC", (comic['name'],)).fetchone()
-    if comic_latest_stored_date_str is not None:
-        # SQLite annoyingly returns even single values in a tuple...
-        comic_latest_stored_date_str = comic_latest_stored_date_str[0]
-
-    comic_homepage_url = cursor.execute(
-        "SELECT url FROM sources WHERE name = ?", (comic['name'],)).fetchone()[0]
+    comic_latest_stored_date_str = database_query_single(
+        "SELECT date FROM images WHERE name = ? ORDER BY date DESC", (comic['name'],))
+    comic_homepage_url = database_query_single(
+        "SELECT url FROM sources WHERE name = ?", (comic['name'],))
 
     url_start_from = fetch_comic_url_latest(comic_homepage_url)
     for url in _fetch_comic_url_all(url_start_from):
@@ -217,29 +211,19 @@ def _update_index_of_comic(comic):
             break
 
         logger.debug(f"Fetched information for {comic['name']} of {date_str}")
-        cursor.execute(
+        database_query(
             "INSERT INTO images (name, date, filepath) values (?, ?, ?)",
             (comic['name'], date_str, data['filepath']))
 
-    conn.commit()
 
-
-def _create_database_tables(comics_available):
-    cursor = conn.cursor()
-
-    cursor.execute("CREATE TABLE IF NOT EXISTS sources (name TEXT UNIQUE, url TEXT)")
-    for comic in comics_available:
-        cursor.execute("INSERT OR REPLACE INTO sources (name, url) values (?, ?)", (comic['name'], comic['url']))
-
-    cursor.execute(
+def _create_database_tables():
+    database_query("CREATE TABLE IF NOT EXISTS sources (name TEXT UNIQUE, url TEXT)")
+    database_query(
         "CREATE TABLE IF NOT EXISTS images "
         "(name TEXT, date DATE, filepath TEXT NOT NULL, file_id TEXT)")
-
-    cursor.execute(
+    database_query(
         "CREATE TABLE IF NOT EXISTS daily_posts "
         "(chat_id INTEGER, name TEXT, UNIQUE(chat_id, name))")
-
-    conn.commit()
 
 
 def update_index():
@@ -247,13 +231,13 @@ def update_index():
 
     The data shall be stored in a SQLite database so that it can be easily accessed.
     """
+    _create_database_tables()
+
     comics_available = fetch_comics_available()
-    _create_database_tables(comics_available)
-
     for comic in comics_available:
+        database_query(
+            "INSERT OR REPLACE INTO sources (name, url) values (?, ?)", (comic['name'], comic['url']))
         _update_index_of_comic(comic)
-
-    # TODO: Upload directly to tg?
 
     logger.info("Database updated")
 
@@ -263,21 +247,22 @@ def post_comic_of_the_day(context):
 
     Automatically go through all registered chats and stored comics.
     """
-    cursor = conn.cursor()
-    comics = cursor.execute("SELECT name FROM sources").fetchall()
+    comics = database_query("SELECT name FROM sources")
+
+    # TODO: This should be made simpler
 
     for name in comics:
-        date_str, filepath, file_id = cursor.execute(
+        date_str, filepath, file_id = database_query_single(
             "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY date DESC LIMIT 1",
-            (name,)).fetchone()
+            (name,))
 
         today_str = datetime.date.today().strftime(r"%Y-%m-%d")
         if date_str != today_str:
             logger.debug("Latest comic was not of today!")
             continue
 
-        chat_ids = cursor.execute(
-            "SELECT chat_id FROM daily_posts WHERE name = ?", (name,)).fetchall()
+        chat_ids = database_query(
+            "SELECT chat_id FROM daily_posts WHERE name = ?", (name,))
         for chat_id in chat_ids:
             if file_id is not None:
                 context.bot.send_photo(chat_id, file_id, f"{name} of the day")
@@ -290,19 +275,14 @@ def post_comic_of_the_day(context):
             logger.debug(f"Photos in message: {message.photo}")
             continue
             # file_id = message.photo...  # Need to find the largest from photo
-            cursor.execute(
+            database_query(
                 "UPDATE images SET file_id = ? WHERE filepath = ?", (file_id, filepath))
-
-    conn.commit()
 
 
 def random_menu(update, context):  # pylint: disable=unused-argument
     """Present the user the comic options"""
-    cursor = conn.cursor()
-    comics = cursor.execute("SELECT name FROM sources").fetchall()
-
+    comics = database_query("SELECT name FROM sources")
     buttons = [[InlineKeyboardButton(f"{name}", callback_data=name)] for name in comics]
-
     keyboard = [
         *buttons,
         [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
@@ -317,9 +297,8 @@ def random_post(update, context):
     query = update.callback_query
     name = query.data
 
-    cursor = conn.cursor()
-    date, filepath, file_id = cursor.execute(
-        "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY RANDOM() LIMIT 1", (name,)).fetchone()
+    date, filepath, file_id = database_query_single(
+        "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY RANDOM() LIMIT 1", (name,))
 
     query.message.edit_text(f"{name} of {date}")
     chat_id = query.message.chat['id']
@@ -334,16 +313,14 @@ def random_post(update, context):
 
 
 def _is_comic_scheduled(chat_id, name):
-    cursor = conn.cursor()
-    row = cursor.execute("SELECT 1 FROM daily_posts WHERE chat_id = ? AND name = ?", (chat_id, name)).fetchone()
+    row = database_query_single("SELECT 1 FROM daily_posts WHERE chat_id = ? AND name = ?", (chat_id, name))
     return row is not None
 
 
 def schedule_menu(update, context):  # pylint: disable=unused-argument
     """Present the user the scheduling options"""
     chat_id = update.callback_query.message.chat_id
-    cursor = conn.cursor()
-    comics = cursor.execute("SELECT name FROM sources").fetchall()
+    comics = database_query("SELECT name FROM sources")
 
     buttons = []
     for name in comics:
@@ -381,16 +358,12 @@ def schedule(update, context):  # pylint: disable=unused-argument
 
 def scheduling_enable(chat_id, name):
     """Enable scheduled posting of a comic for a chat"""
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO daily_posts values (?, ?)", (chat_id, name))
-    conn.commit()
+    database_query("INSERT INTO daily_posts values (?, ?)", (chat_id, name))
 
 
 def scheduling_disable(chat_id, name):
     """Disable scheduled posting of a comic for a chat"""
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM daily_posts WHERE chat_id = ? AND name = ?", (chat_id, name))
-    conn.commit()
+    database_query("DELETE FROM daily_posts WHERE chat_id = ? AND name = ?", (chat_id, name))
 
 
 def start(update, context):  # pylint: disable=unused-argument
