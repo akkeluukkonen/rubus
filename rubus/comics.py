@@ -1,11 +1,14 @@
 """
 Automatically post the latest Fok-It comic strip to a Telegram channel requesting it.
 """
+import collections
 import datetime
 import enum
 import logging
 import os
+import queue
 import sqlite3
+import threading
 import urllib.parse
 
 import requests
@@ -26,9 +29,34 @@ URL_BASE = f"{URL_SCHEME}://{URL_HOST}"
 URL_COMICS = f"{URL_BASE}/sarjakuvat/"
 NOON = datetime.time(12, 00)
 MONDAY_TO_FRIDAY = tuple(range(5))
+DATABASE_FILEPATH = os.path.join(CONFIG['filepaths']['storage'], "comics.db")
 
-FILEPATH_INDEX = os.path.join(CONFIG['filepaths']['storage'], "comics.db")
-conn = sqlite3.connect(FILEPATH_INDEX)
+# Queue objects will be used for ensuring for multi-thread communications to
+# ensure that only a single thread is accessing the database to avoid errors.
+Query = collections.namedtuple('Query', ['statement', 'args'])
+Result = collections.namedtuple('Result', ['statement', 'args', 'rows'])
+queries = queue.Queue()
+results = queue.Queue()
+
+
+def database_worker():
+    """All database queries should be submitted through this worker"""
+    conn = sqlite3.connect(DATABASE_FILEPATH)
+    cursor = conn.cursor()
+    while True:
+        query = queries.get()
+        rows = cursor.execute(query.statement, *query.args).fetchall()
+        results.put(Result(query.statement, query.args, rows))
+
+
+def database_query(statement, *args):
+    """Request a query from the database"""
+    query = Query(statement, args)
+    logger.debug(f"Requesting query: {query}")
+    queries.put(query)
+    result = results.get()
+    logger.debug(f"Received result: {result}")
+    return result.rows
 
 
 class State(enum.IntEnum):
@@ -350,6 +378,8 @@ def start(update, context):  # pylint: disable=unused-argument
 
 def init(dispatcher):
     """At bot startup this function should be executed to initialize the jobs correctly"""
+    logger.info("Setting up database worker")
+    threading.Thread(target=database_worker, daemon=True)
     logger.info("Updating database for comics")
     update_index()
     logger.info("Scheduling job to post comics daily")
