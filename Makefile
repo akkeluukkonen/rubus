@@ -10,7 +10,7 @@ git-dirty-check:
 	# Will fail if the repository is dirty to avoid mislabeling images
 	git diff --quiet || exit 1
 	# Also fail from untracked files inside rubus/ as this affects image building
-	git status --short -- rubus/ || exit 1
+	test -z "$$(git status --short -- rubus/)" || exit 1
 
 build: git-dirty-check
 	@docker build -t ${LATEST} --label git-commit=${COMMIT} -f docker/app/Dockerfile .
