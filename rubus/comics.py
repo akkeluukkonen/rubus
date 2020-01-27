@@ -4,6 +4,7 @@ Automatically post the latest Fok-It comic strip to a Telegram channel requestin
 import collections
 import datetime
 import enum
+import itertools
 import logging
 import os
 import queue
@@ -247,7 +248,7 @@ def post_comic_of_the_day(context):
 
     # TODO: This should be made simpler
 
-    for name in comics:
+    for name in itertools.chain.from_iterable(comics):
         date_str, filepath, file_id = database_query_single(
             "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY date DESC LIMIT 1", name)
 
@@ -277,7 +278,8 @@ def post_comic_of_the_day(context):
 def random_menu(update, context):  # pylint: disable=unused-argument
     """Present the user the comic options"""
     comics = database_query("SELECT name FROM sources")
-    buttons = [[InlineKeyboardButton(f"{name}", callback_data=name)] for name in comics]
+    buttons = [[InlineKeyboardButton(f"{name}", callback_data=name)] \
+        for name in itertools.chain.from_iterable(comics)]
     keyboard = [
         *buttons,
         [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
@@ -319,7 +321,7 @@ def schedule_menu(update, context):  # pylint: disable=unused-argument
     comics = database_query("SELECT name FROM sources")
 
     buttons = []
-    for name in comics:
+    for name in itertools.chain.from_iterable(comics):
         # TODO: What callback?
         if _is_comic_scheduled(chat_id, name):
             buttons.append(
