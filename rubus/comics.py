@@ -381,7 +381,8 @@ def start(update, context):  # pylint: disable=unused-argument
 def init(dispatcher):
     """At bot startup this function should be executed to initialize the jobs correctly"""
     logger.info("Setting up database worker")
-    threading.Thread(target=database_worker, daemon=True)
+    worker = threading.Thread(target=database_worker, daemon=True)
+    worker.start()
     logger.info("Updating database for comics")
     update_index()
     logger.info("Scheduling job to post comics daily")
