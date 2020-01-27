@@ -61,9 +61,31 @@ def database_query(statement, *args):
     query = Query(statement, args)
     logger.debug(f"Requesting query: {query}")
     queries.put(query)
+
     result = results.get()
+    if result is None:
+        raise RuntimeError("Error in transaction!")
+
     logger.debug(f"Received result: {result}")
     return result.rows
+
+
+def database_query_single(statement, *args):
+    """Request query returning only a single row or element
+
+    The caller is responsible of expecting what format is returned.
+    """
+    rows = database_query(statement, *args)
+    if rows is None:
+        return None
+
+    # Even if only one row is returned, it will be in a list per the SQLite interface
+    row = rows[0]
+    if len(row) == 1:
+        # Return exactly the only element for easier parsing for the caller
+        return row[0]
+
+    return row
 
 
 class State(enum.IntEnum):
