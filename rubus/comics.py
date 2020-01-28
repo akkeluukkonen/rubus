@@ -254,7 +254,7 @@ def post_comic_of_the_day(context):
 
         today_str = datetime.date.today().strftime(r"%Y-%m-%d")
         if date_str != today_str:
-            logger.debug("Latest comic was not of today!")
+            logger.debug(f"Latest comic was not of today! Today: {today_str} date: {date_str}")
             continue
 
         chat_ids = database_query(
