@@ -342,8 +342,8 @@ def schedule_menu(update, context):  # pylint: disable=unused-argument
 
 def schedule(update, context):  # pylint: disable=unused-argument
     """Change the schedule of a comic"""
-    chat_id = update.message.chat_id
     query = update.callback_query
+    chat_id = query.message.chat_id
     name = query.data
 
     if _is_comic_scheduled(chat_id, name):
