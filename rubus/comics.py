@@ -322,13 +322,11 @@ def schedule_menu(update, context):  # pylint: disable=unused-argument
 
     buttons = []
     for name in itertools.chain.from_iterable(comics):
-        # TODO: What callback?
         if _is_comic_scheduled(chat_id, name):
-            buttons.append(
-                [InlineKeyboardButton(f"Stop posting {name} daily at noon", callback_data=name)])
+            text = f"Stop posting {name} daily at noon"
         else:
-            buttons.append(
-                [InlineKeyboardButton(f"Start posting {name} daily at noon", callback_data=name)])
+            text = f"Start posting {name} daily at noon"
+        buttons.append(InlineKeyboardButton(text, callback_data=name))
 
     keyboard = [
         *buttons,
