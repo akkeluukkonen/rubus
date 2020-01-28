@@ -244,35 +244,18 @@ def post_comic_of_the_day(context):
 
     Automatically go through all registered chats and stored comics.
     """
-    comics = database_query("SELECT name FROM sources")
+    today_str = datetime.date.today().strftime(r"%Y-%m-%d")
 
-    # TODO: This should be made simpler
+    for chat_id, name in database_query("SELECT chat_id, name FROM daily_posts"):
+        filepath = database_query_single(
+            "SELECT filepath FROM images "
+            "WHERE name = ? AND date = ? ORDER BY date DESC LIMIT 1", name, today_str)
 
-    for name in itertools.chain.from_iterable(comics):
-        date_str, filepath, file_id = database_query_single(
-            "SELECT date, filepath, file_id FROM images WHERE name = ? ORDER BY date DESC LIMIT 1", name)
-
-        today_str = datetime.date.today().strftime(r"%Y-%m-%d")
-        if date_str != today_str:
-            logger.debug(f"Latest comic was not of today! Today: {today_str} date: {date_str}")
+        if filepath is None:
             continue
 
-        chat_ids = database_query(
-            "SELECT chat_id FROM daily_posts WHERE name = ?", name)
-        for chat_id in chat_ids:
-            if file_id is not None:
-                context.bot.send_photo(chat_id, file_id, f"{name} of the day")
-                continue
-
-            with open(filepath, 'rb') as image:
-                message = context.bot.send_photo(chat_id, image, f"{name} of the day")
-
-            # TODO: Get the maximum size of the photo and update the file_id to the database
-            logger.debug(f"Photos in message: {message.photo}")
-            continue
-            # file_id = message.photo...  # Need to find the largest from photo
-            database_query(
-                "UPDATE images SET file_id = ? WHERE filepath = ?", file_id, filepath)
+        with open(filepath, 'rb') as image:
+            context.bot.send_photo(chat_id, image, f"{name} of the day", disable_notification=True)
 
 
 def random_menu(update, context):  # pylint: disable=unused-argument
