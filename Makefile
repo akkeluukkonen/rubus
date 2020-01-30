@@ -2,6 +2,7 @@
 
 NAME := akkeluukkonen/rubus
 COMMIT := $$(git rev-parse HEAD)
+DEBUG := ${NAME}:debug
 LATEST := ${NAME}:latest
 RELEASE := ${NAME}:release
 VERSION := patch # Default
@@ -15,11 +16,17 @@ git-dirty-check:
 build: git-dirty-check
 	@docker build -t ${LATEST} --label git-commit=${COMMIT} -f docker/app/Dockerfile .
 
+build-debug:
+	@docker build -t ${DEBUG} -f docker/app/Dockerfile .
+
 run: build
 	@docker-compose up
 
 push:
 	@docker push ${LATEST}
+
+push-debug:
+	@docker push ${DEBUG}
 
 version: git-dirty-check
 	@poetry version ${VERSION} | rev | cut -d' ' -f1 | rev > .release-version
@@ -32,3 +39,5 @@ release: version build
 	@docker push ${RELEASE}
 	@docker push ${NAME}:$$(cat .release-version)
 	@rm .release-version
+
+debug: build-debug push-debug
