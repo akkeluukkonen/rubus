@@ -56,9 +56,9 @@ def _get_api_token():
     return api_token
 
 
-def error(update, context):
+def error(update, context):  # pylint: disable=unused-argument
     """Log unexpected errors for debugging"""
-    logger.warning(f"Update {update} caused error {context.error!r}: {context.error}")
+    logger.exception("Caught unhandled exception")
 
 
 def main():
