@@ -368,8 +368,8 @@ def init(dispatcher):
     logger.info("Scheduling job to post comics daily")
     job_queue = dispatcher.job_queue
     weekdays = tuple(range(5))
-    time_update = datetime.time(hours=11, minutes=45)
-    time_post = datetime.time(hours=12, minutes=00)
+    time_update = datetime.time(hour=11, minute=45)
+    time_post = datetime.time(hour=12, minute=00)
     job_queue.run_daily(update_index, time_update, weekdays)
     job_queue.run_daily(post_comic_of_the_day, time_post, weekdays)
 
