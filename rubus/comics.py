@@ -307,7 +307,7 @@ def schedule_menu(update, context):  # pylint: disable=unused-argument
             text = f"Stop posting {name} daily at noon"
         else:
             text = f"Start posting {name} daily at noon"
-        buttons.append(InlineKeyboardButton(text, callback_data=name))
+        buttons.append([InlineKeyboardButton(text, callback_data=name)])
 
     keyboard = [
         *buttons,
