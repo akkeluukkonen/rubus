@@ -28,8 +28,6 @@ URL_SCHEME = "https"
 URL_HOST = "hs.fi"
 URL_BASE = f"{URL_SCHEME}://{URL_HOST}"
 URL_COMICS = f"{URL_BASE}/sarjakuvat/"
-NOON = datetime.time(12, 00)
-MONDAY_TO_FRIDAY = tuple(range(5))
 DATABASE_FILEPATH = os.path.join(CONFIG['filepaths']['storage'], "comics.db")
 
 # Queue objects will be used for ensuring for multi-thread communications to
@@ -223,7 +221,7 @@ def _create_database_tables():
         "(chat_id INTEGER, name TEXT, UNIQUE(chat_id, name))")
 
 
-def update_index():
+def update_index(*args):  # pylint: disable=unused-argument
     """Download all comics we haven't yet seen
 
     The data shall be stored in a SQLite database so that it can be easily accessed.
@@ -363,11 +361,17 @@ def init(dispatcher):
     logger.info("Setting up database worker")
     worker = threading.Thread(target=database_worker, daemon=True)
     worker.start()
+
     logger.info("Updating database for comics")
     update_index()
+
     logger.info("Scheduling job to post comics daily")
     job_queue = dispatcher.job_queue
-    job_queue.run_daily(post_comic_of_the_day, NOON, MONDAY_TO_FRIDAY)
+    weekdays = tuple(range(5))
+    time_update = datetime.time(hours=11, minutes=45)
+    time_post = datetime.time(hours=12, minutes=00)
+    job_queue.run_daily(update_index, time_update, weekdays)
+    job_queue.run_daily(post_comic_of_the_day, time_post, weekdays)
 
 
 handler_conversation = ConversationHandler(
