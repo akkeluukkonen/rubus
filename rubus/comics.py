@@ -4,14 +4,13 @@ Handle posting of hs.fi comics when requested.
 The bot can automatically download local copies of the comics available at hs.fi,
 then post then either on request or as daily scheduled posts on weekdays.
 """
-import collections
 import datetime
 import enum
+import functools
 import itertools
 import logging
 import os
 import queue
-import sqlite3
 import threading
 import urllib.parse
 
@@ -33,57 +32,11 @@ URL_BASE = f"{URL_SCHEME}://{URL_HOST}"
 URL_COMICS = f"{URL_BASE}/sarjakuvat/"
 DATABASE_FILEPATH = os.path.join(CONFIG['filepaths']['storage'], "comics.db")
 
-# Queue objects will be used for ensuring for multi-thread communications to
-# ensure that only a single thread is accessing the database to avoid errors.
-Query = collections.namedtuple('Query', ['statement', 'args'])
-Result = collections.namedtuple('Result', ['statement', 'args', 'rows'])
+# Multi-threading SQL queries shall be synchronized over these Queue objects
 queries = queue.Queue()
 results = queue.Queue()
-
-
-def database_worker():
-    """All database queries should be submitted through this worker"""
-    logger.debug(f"Connecting to {DATABASE_FILEPATH}")
-    # Set isolation_level=None for autocommit mode as we are running the
-    # database through a single thread, thus making db management easier.
-    conn = sqlite3.connect(DATABASE_FILEPATH, isolation_level=None)
-    cursor = conn.cursor()
-    while True:
-        query = queries.get()
-
-        try:
-            rows = cursor.execute(query.statement, query.args).fetchall()
-            results.put(Result(query.statement, query.args, rows))
-        except (sqlite3.OperationalError, sqlite3.ProgrammingError):
-            logger.exception("SQLite exception during transaction!")
-            results.put(None)
-
-def database_query(statement, *args):
-    """Request a query from the database"""
-    queries.put(Query(statement, args))
-    # Block while waiting for the results...
-    result = results.get()
-    if result is None:
-        raise RuntimeError("Error in transaction!")
-    return result.rows
-
-
-def database_query_single(statement, *args):
-    """Request query returning only a single row or element
-
-    The caller is responsible of expecting what format is returned.
-    """
-    rows = database_query(statement, *args)
-    if not rows:
-        return None
-
-    # Even if only one row is returned, it will be in a list per the SQLite interface
-    row = rows[0]
-    if len(row) == 1:
-        # Return exactly the only element for easier parsing for the caller
-        return row[0]
-
-    return row
+database_query = functools.partial(helper.database_query, queries, results)
+database_query_single = functools.partial(helper.database_query_single, queries, results)
 
 
 class State(enum.IntEnum):
@@ -376,7 +329,10 @@ def start(update, context):  # pylint: disable=unused-argument
 def init(dispatcher):
     """At bot startup this function should be executed to initialize the jobs correctly"""
     logger.info("Setting up database worker")
-    worker = threading.Thread(target=database_worker, daemon=True)
+    worker = threading.Thread(
+        target=helper.database_worker,
+        args=(DATABASE_FILEPATH, queries, results),
+        daemon=True)
     worker.start()
 
     logger.info("Updating database for comics")

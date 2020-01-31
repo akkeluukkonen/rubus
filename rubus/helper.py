@@ -1,10 +1,16 @@
 """
-General helper functions which can be shared between multiple submodules.
+General helper functions which can be shared between multiple modules.
 """
+import collections
 import importlib.resources
 import json
+import logging
+import sqlite3
 
 from telegram.ext import ConversationHandler
+
+
+logger = logging.getLogger('rubus')
 
 
 def config_load():
@@ -39,3 +45,55 @@ def confused(update, context):  # pylint: disable=unused-argument
         "Sorry, I'm confused and didn't understand what you wanted me to do.\n"
         "Cancelling current operation.")
     return ConversationHandler.END
+
+
+# Queue objects will be used for ensuring for multi-thread communications to
+# ensure that only a single thread is accessing the database to avoid errors.
+Query = collections.namedtuple('Query', ['statement', 'args'])
+Result = collections.namedtuple('Result', ['statement', 'args', 'rows'])
+
+
+def database_worker(database_filepath, queries, results):
+    """All database queries should be submitted through this worker"""
+    logger.debug(f"Connecting to {database_filepath}")
+    # Set isolation_level=None for autocommit mode as we are running the
+    # database through a single thread, thus making db management easier.
+    conn = sqlite3.connect(database_filepath, isolation_level=None)
+    cursor = conn.cursor()
+    while True:
+        query = queries.get()
+
+        try:
+            rows = cursor.execute(query.statement, query.args).fetchall()
+            results.put(Result(query.statement, query.args, rows))
+        except (sqlite3.OperationalError, sqlite3.ProgrammingError):
+            logger.exception("SQLite exception during transaction!")
+            results.put(None)
+
+
+def database_query(queries, results, statement, *args):
+    """Request a query from the database"""
+    queries.put(Query(statement, args))
+    # Block while waiting for the results...
+    result = results.get()
+    if result is None:
+        raise RuntimeError("Error in transaction!")
+    return result.rows
+
+
+def database_query_single(queries, results, statement, *args):
+    """Request query returning only a single row or element
+
+    The caller is responsible of expecting what format is returned.
+    """
+    rows = database_query(queries, results, statement, *args)
+    if not rows:
+        return None
+
+    # Even if only one row is returned, it will be in a list per the SQLite interface
+    row = rows[0]
+    if len(row) == 1:
+        # Return exactly the only element for easier parsing for the caller
+        return row[0]
+
+    return row
