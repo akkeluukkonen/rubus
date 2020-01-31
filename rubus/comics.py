@@ -256,13 +256,27 @@ def post_comic_of_the_day(context):
             context.bot.send_photo(chat_id, image, f"{name} of the day", disable_notification=True)
 
 
+def _group_elements(flat_list, amount_per_group):
+    """Create list of tuples from elements in a flat list
+
+    The last group may be underfilled if the iterator does not split evenly into the requested pairs,
+    therefore resulting in a different result compared to using itertools.zip_longest."""
+    grouped = list(zip(*[iter(flat_list)] * amount_per_group))
+    # We still need to add the remaining elements if any
+    remaining = len(flat_list) % amount_per_group
+    if remaining:
+        grouped.append(tuple(flat_list[-remaining:]))
+    return grouped
+
+
 def random_menu(update, context):  # pylint: disable=unused-argument
     """Present the user the comic options"""
     comics = database_query("SELECT name FROM sources")
-    buttons = [[InlineKeyboardButton(f"{name}", callback_data=name)] \
+    buttons = [InlineKeyboardButton(f"{name}", callback_data=name) \
         for name in itertools.chain.from_iterable(comics)]
+    buttons_grouped = _group_elements(buttons, 2)
     keyboard = [
-        *buttons,
+        *buttons_grouped,
         [InlineKeyboardButton("Cancel", callback_data=Command.CANCEL)],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
