@@ -47,6 +47,20 @@ def confused(update, context):  # pylint: disable=unused-argument
     return ConversationHandler.END
 
 
+def group_elements(flat_list, amount_per_group):
+    """Create list of tuples from elements in a flat list
+
+    The last group may be underfilled if the iterator does not split evenly into the requested pairs,
+    therefore resulting in a different result compared to using itertools.zip_longest.
+    """
+    grouped = list(zip(*[iter(flat_list)] * amount_per_group))
+    # We still need to add the remaining elements if any
+    remaining = len(flat_list) % amount_per_group
+    if remaining:
+        grouped.append(tuple(flat_list[-remaining:]))
+    return grouped
+
+
 # Queue objects will be used for ensuring for multi-thread communications to
 # ensure that only a single thread is accessing the database to avoid errors.
 Query = collections.namedtuple('Query', ['statement', 'args'])
