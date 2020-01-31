@@ -60,27 +60,6 @@ class Command(enum.IntEnum):
     CANCEL = enum.auto()
 
 
-handler_conversation = ConversationHandler(
-    entry_points=[CommandHandler('comics', _start)],
-    states={
-        State.MENU: [
-            CallbackQueryHandler(_random_menu, pattern=f"^{Command.RANDOM_MENU}$"),
-            CallbackQueryHandler(_schedule_menu, pattern=f"^{Command.SCHEDULE_MENU}$"),
-            CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
-            ],
-        State.SCHEDULE: [
-            CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
-            CallbackQueryHandler(_schedule_post),
-            ],
-        State.RANDOM: [
-            CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
-            CallbackQueryHandler(_random_post),
-        ]
-    },
-    fallbacks=[MessageHandler(Filters.all, helper.confused)]
-)
-
-
 def init(dispatcher):
     """At bot startup this function should be executed to initialize the jobs correctly"""
     logger.info("Setting up database worker")
@@ -338,3 +317,24 @@ def _fetch_comic_url_latest(comic_url_homepage):
     comic_uri_part = latest_comic.find('meta', {'itemprop': 'contentUrl'})['content']
     comic_url = f"{URL_BASE}{comic_uri_part}"
     return comic_url
+
+
+handler_conversation = ConversationHandler(
+    entry_points=[CommandHandler('comics', _start)],
+    states={
+        State.MENU: [
+            CallbackQueryHandler(_random_menu, pattern=f"^{Command.RANDOM_MENU}$"),
+            CallbackQueryHandler(_schedule_menu, pattern=f"^{Command.SCHEDULE_MENU}$"),
+            CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
+            ],
+        State.SCHEDULE: [
+            CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
+            CallbackQueryHandler(_schedule_post),
+            ],
+        State.RANDOM: [
+            CallbackQueryHandler(helper.cancel, pattern=f"^{Command.CANCEL}$"),
+            CallbackQueryHandler(_random_post),
+        ]
+    },
+    fallbacks=[MessageHandler(Filters.all, helper.confused)]
+)
