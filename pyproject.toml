@@ -6,11 +6,11 @@ authors = ["Akke Luukkonen <akke@luukkonen.dev>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.7"
-python-telegram-bot = "^12.2"
-Pillow = "^6.2"
-requests = "^2.22.0"
-beautifulsoup4 = "^4.8.1"
+python = "^3.8.1"
+python-telegram-bot = "^12.3"
+Pillow = "^7.0"
+requests = "^2.22"
+beautifulsoup4 = "^4.8"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.4"
@@ -19,5 +19,5 @@ pylint = "^2.4"
 rubus = "rubus.main:main"
 
 [build-system]
-requires = ["poetry==1.0.0"]
+requires = ["poetry==1.0.3"]
 build-backend = "poetry.masonry.api"

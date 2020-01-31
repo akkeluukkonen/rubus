@@ -1,7 +1,7 @@
-FROM python:3.7.5-slim as builder
+FROM python:3.8.1-slim as builder
 
 # Make sure that POETRY_VERSION is the same in pyproject.toml
-ENV POETRY_VERSION=1.0.0 \
+ENV POETRY_VERSION=1.0.3 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=off
 
@@ -22,7 +22,7 @@ RUN poetry export -f requirements.txt | pip install --quiet -r /dev/stdin
 COPY rubus ./rubus
 RUN poetry build --quiet && pip install --no-dependencies ./dist/rubus-*py3-none-any.whl
 
-FROM python:3.7.5-slim AS final
+FROM python:3.8.1-slim AS final
 
 # Run the container in our local timezone for automatic DST.
 # /etc/localtime has to be removed as otherwise tzdata overwrites
