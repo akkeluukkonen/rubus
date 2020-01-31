@@ -1,5 +1,8 @@
 """
-Automatically post the latest Fok-It comic strip to a Telegram channel requesting it.
+Handle posting of hs.fi comics when requested.
+
+The bot can automatically download local copies of the comics available at hs.fi,
+then post then either on request or as daily scheduled posts on weekdays.
 """
 import collections
 import datetime
