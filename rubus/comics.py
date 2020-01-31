@@ -296,22 +296,13 @@ def schedule(update, context):  # pylint: disable=unused-argument
     name = query.data
 
     if _is_comic_scheduled(chat_id, name):
-        scheduling_disable(chat_id, name)
+        database_query("DELETE FROM daily_posts WHERE chat_id = ? AND name = ?", chat_id, name)
         query.message.edit_text(f"Scheduled {name} posting disabled")
     else:
-        scheduling_enable(chat_id, name)
+        database_query("INSERT INTO daily_posts values (?, ?)", chat_id, name)
         query.message.edit_text(f"Scheduled {name} posting enabled at noon")
 
     return ConversationHandler.END
-
-def scheduling_enable(chat_id, name):
-    """Enable scheduled posting of a comic for a chat"""
-    database_query("INSERT INTO daily_posts values (?, ?)", chat_id, name)
-
-
-def scheduling_disable(chat_id, name):
-    """Disable scheduled posting of a comic for a chat"""
-    database_query("DELETE FROM daily_posts WHERE chat_id = ? AND name = ?", chat_id, name)
 
 
 def start(update, context):  # pylint: disable=unused-argument
