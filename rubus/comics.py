@@ -30,9 +30,9 @@ URL_SCHEME = "https"
 URL_HOST = "hs.fi"
 URL_BASE = f"{URL_SCHEME}://{URL_HOST}"
 URL_COMICS = f"{URL_BASE}/sarjakuvat/"
-DATABASE_FILEPATH = os.path.join(CONFIG['filepaths']['storage'], "comics.db")
 
 # Multi-threading SQL queries shall be synchronized over these Queue objects
+DATABASE_FILEPATH = os.path.join(CONFIG['filepaths']['storage'], "comics.db")
 queries = queue.Queue()
 results = queue.Queue()
 database_query = functools.partial(helper.database_query, queries, results)
@@ -142,7 +142,6 @@ def fetch_comics_available():
         uri_part = content.find('meta', {'itemprop': 'contentUrl'})['content']
         url = f"{URL_BASE}{uri_part}"
         comic_data.append({'name': name, 'url': url})
-
     return comic_data
 
 
@@ -178,18 +177,12 @@ def _create_database_tables():
 
 
 def update_index(*args):  # pylint: disable=unused-argument
-    """Download all comics we haven't yet seen
-
-    The data shall be stored in a SQLite database so that it can be easily accessed.
-    """
-    _create_database_tables()
-
+    """Download all comics we haven't yet stored"""
     comics_available = fetch_comics_available()
     for comic in comics_available:
         database_query(
             "INSERT OR REPLACE INTO sources (name, url) values (?, ?)", comic['name'], comic['url'])
         _update_index_of_comic(comic)
-
     logger.info("Database updated")
 
 
@@ -314,6 +307,7 @@ def init(dispatcher):
     worker.start()
 
     logger.info("Updating database for comics")
+    _create_database_tables()
     update_index()
 
     logger.info("Scheduling job to post comics daily")
