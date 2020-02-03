@@ -24,6 +24,9 @@ RUN poetry build --quiet && pip install --no-dependencies ./dist/rubus-*py3-none
 
 FROM python:3.8.1-slim AS final
 
+# Dumb-init is required for proper signal handling in the container
+RUN apt-get update -qq && apt-get install -qq dumb-init > /dev/null 2>&1
+
 # Run the container in our local timezone for automatic DST.
 # /etc/localtime has to be removed as otherwise tzdata overwrites
 # /etc/timezone back to Etc/UTC for some reason
@@ -43,4 +46,4 @@ COPY --from=builder /venv /venv
 ENV PATH="/venv/bin:$PATH" \
     PYTHONFAULTHANDLER=1
 
-ENTRYPOINT [ "rubus", "--docker" ]
+ENTRYPOINT [ "/usr/bin/dumb-init", "--", "rubus", "--docker" ]
