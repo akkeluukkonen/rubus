@@ -2,7 +2,7 @@
 Handle posting of hs.fi comics when requested.
 
 The bot can automatically download local copies of the comics available at hs.fi,
-then post then either on request or as daily scheduled posts on weekdays.
+then post then either on request or as daily scheduled posts.
 """
 import datetime
 import enum
@@ -75,14 +75,13 @@ def init(dispatcher):
 
     logger.info("Scheduling job to post comics daily")
     job_queue = dispatcher.job_queue
-    weekdays = tuple(range(5))
     time_update = datetime.time(hour=11, minute=45)
     time_post = datetime.time(hour=12, minute=00)
     # Grab the timezone of the environment and pass it on
     # since from python-telegram-bot >= 12.3.0 the timezone handling defaults to UTC
     tzinfo = datetime.datetime.now().astimezone().tzinfo
-    job_queue.run_daily(_update_index, time_update, weekdays, tzinfo=tzinfo)
-    job_queue.run_daily(_post_comic_of_the_day, time_post, weekdays, tzinfo=tzinfo)
+    job_queue.run_daily(_update_index, time_update, tzinfo=tzinfo)
+    job_queue.run_daily(_post_comic_of_the_day, time_post, tzinfo=tzinfo)
 
 
 def _create_database_tables():
@@ -245,8 +244,8 @@ def _download_comic(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
 
-    date_text_with_weekday = soup.find('span', {'class': 'date'}).text
-    date_text = date_text_with_weekday.split(' ')[-1]
+    date_text_with_day_of_week = soup.find('span', {'class': 'date'}).text
+    date_text = date_text_with_day_of_week.split(' ')[-1]
     try:
         date = datetime.datetime.strptime(date_text, r"%d.%m.%Y").date()
     except ValueError:
