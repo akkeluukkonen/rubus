@@ -75,13 +75,13 @@ def init(dispatcher):
 
     logger.info("Scheduling job to post comics daily")
     job_queue = dispatcher.job_queue
-    time_update = datetime.time(hour=11, minute=45)
-    time_post = datetime.time(hour=12, minute=00)
     # Grab the timezone of the environment and pass it on
     # since from python-telegram-bot >= 12.3.0 the timezone handling defaults to UTC
     tzinfo = datetime.datetime.now().astimezone().tzinfo
-    job_queue.run_daily(_update_index, time_update, tzinfo=tzinfo)
-    job_queue.run_daily(_post_comic_of_the_day, time_post, tzinfo=tzinfo)
+    time_update = datetime.time(hour=11, minute=45, tzinfo=tzinfo)
+    time_post = datetime.time(hour=12, minute=00, tzinfo=tzinfo)
+    job_queue.run_daily(_update_index, time_update)
+    job_queue.run_daily(_post_comic_of_the_day, time_post)
 
 
 def _create_database_tables():
