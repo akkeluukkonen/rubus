@@ -78,8 +78,11 @@ def init(dispatcher):
     weekdays = tuple(range(5))
     time_update = datetime.time(hour=11, minute=45)
     time_post = datetime.time(hour=12, minute=00)
-    job_queue.run_daily(_update_index, time_update, weekdays)
-    job_queue.run_daily(_post_comic_of_the_day, time_post, weekdays)
+    # Grab the timezone of the environment and pass it on
+    # since from python-telegram-bot >= 12.3.0 the timezone handling defaults to UTC
+    tzinfo = datetime.datetime.now().astimezone().tzinfo
+    job_queue.run_daily(_update_index, time_update, weekdays, tzinfo=tzinfo)
+    job_queue.run_daily(_post_comic_of_the_day, time_post, weekdays, tzinfo=tzinfo)
 
 
 def _create_database_tables():
