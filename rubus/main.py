@@ -20,7 +20,7 @@ FILEPATH_DATA = os.path.join(DOCKER_VOLUME_FILEPATH, "bot-data.pkl")
 
 formatter_stream = logging.Formatter(
     "%(asctime)s.%(msecs)03d - %(levelname)s - %(module)s - %(message)s",
-    datefmt="%H:%M:%S")
+    datefmt=r"%Y-%m-%d %H:%M:%S")
 handler_stream = logging.StreamHandler()
 handler_stream.setFormatter(formatter_stream)
 
