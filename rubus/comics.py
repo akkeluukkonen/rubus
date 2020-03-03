@@ -249,10 +249,10 @@ def _download_comic(url):
     try:
         date = datetime.datetime.strptime(date_text, r"%d.%m.%Y").date()
     except ValueError:
-        # Comics released in the current year don't include the year explicitly in the text
-        date = datetime.datetime.strptime(date_text, r"%d.%m.").date()
+        # Comics released in the current year don't include the year by default in the text
         today = datetime.datetime.now().date()
-        date = date.replace(year=today.year)
+        date_text = f"{date_text}{today.year}"
+        date = datetime.datetime.strptime(date_text, r"%d.%m.%Y").date()
 
     image_element = soup.find('img')
     # The element includes a low-res and high-res partial URI but we want only the high-res one,
