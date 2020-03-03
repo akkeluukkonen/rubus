@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rubus"
-version = "0.3.0"
+version = "0.3.1"
 description = "Telegram bot for my friends"
 authors = ["Akke Luukkonen <akke@luukkonen.dev>"]
 license = "MIT"
